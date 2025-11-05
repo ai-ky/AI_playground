@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="時間管理網站 - 支援鬧鐘、倒數計時、語音輸入">
+    <meta name="theme-color" content="#4F46E5">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
+    <title>時間管理 - Time Manager</title>
+    
+    <link rel="icon" type="image/x-icon" href="/assets/icons/favicon.ico">
+    <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
+    <link rel="manifest" href="/manifest.json">
+    
+    <!-- 主要樣式 -->
+    <link rel="stylesheet" href="/src/css/style.css">
+    <link rel="stylesheet" href="/src/css/responsive.css">
+    
+    <!-- 預加載關鍵資源 -->
+    <link rel="preload" href="/assets/sounds/alarm1.mp3" as="audio">
+    <link rel="preload" href="/assets/sounds/alarm2.mp3" as="audio">
+</head>
+<body>
+    <!-- 應用程式容器 -->
+    <div id="app" class="app-container">
+        <!-- 標題欄 -->
+        <header class="header">
+            <h1 class="app-title">⏰ 時間管理</h1>
+            <div class="header-actions">
+                <button id="status-indicator" class="status-btn" title="線上狀態">
+                    <span class="status-dot"></span>
+                    <span class="status-text">線上</span>
+                </button>
+                <button id="settings-btn" class="settings-btn" title="設定">
+                    <span>⚙️</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- 聊天框與輸入區域 -->
+        <section class="chat-section">
+            <div class="chat-container">
+                <div class="input-group">
+                    <input 
+                        type="text" 
+                        id="chat-input" 
+                        class="chat-input"
+                        placeholder="輸入時間或說話，例如『明天 9 點』或『5 分鐘』"
+                        autocomplete="off"
+                    >
+                    <button id="chat-send" class="btn btn-primary" title="傳送">
+                        📤 傳送
+                    </button>
+                    <button id="voice-btn" class="btn btn-voice" title="語音輸入">
+                        🎤 語音
+                    </button>
+                </div>
+                <div id="input-error" class="input-error"></div>
+            </div>
+        </section>
+
+        <!-- 計時器/鬧鐘清單 -->
+        <section class="list-section">
+            <div class="list-header">
+                <h2>計時器清單</h2>
+                <div class="list-info" id="list-info">計時器: 0 個</div>
+            </div>
+            <div id="timer-list" class="timer-list">
+                <div class="empty-state">
+                    <p>尚無計時器，開始建立一個吧</p>
+                    <p class="empty-hint">輸入『5 分鐘』或『明天 9 點』來開始</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 設定模態視窗 -->
+        <div id="settings-modal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>設定</h2>
+                    <button class="close-btn" id="settings-close">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <!-- 主題設定 -->
+                    <div class="settings-group">
+                        <label for="theme-select">主題:</label>
+                        <select id="theme-select" class="settings-input">
+                            <option value="light">淺色</option>
+                            <option value="dark">深色</option>
+                        </select>
+                    </div>
+
+                    <!-- 聲音選擇 -->
+                    <div class="settings-group">
+                        <label for="sound-select">預設提示音:</label>
+                        <select id="sound-select" class="settings-input">
+                            <option value="alarm1">標準鈴聲</option>
+                            <option value="alarm2">數位鐘聲</option>
+                        </select>
+                    </div>
+
+                    <!-- 語言選擇 -->
+                    <div class="settings-group">
+                        <label for="language-select">語言:</label>
+                        <select id="language-select" class="settings-input">
+                            <option value="zh_TW">繁體中文</option>
+                            <option value="en_US">English</option>
+                        </select>
+                    </div>
+
+                    <!-- 清除按鈕 -->
+                    <div class="settings-group">
+                        <button id="clear-all-btn" class="btn btn-danger">
+                            🗑️ 清除所有資料
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 編輯模態視窗 -->
+        <div id="edit-modal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>編輯計時器</h2>
+                    <button class="close-btn" id="edit-close">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="edit-label">標籤:</label>
+                        <input type="text" id="edit-label" class="form-input" maxlength="50" placeholder="計時器標籤">
+                        <small id="edit-label-count">0/50</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="edit-sound">提示音:</label>
+                        <select id="edit-sound" class="form-input">
+                            <option value="alarm1">標準鈴聲</option>
+                            <option value="alarm2">數位鐘聲</option>
+                        </select>
+                    </div>
+
+                    <div class="form-actions">
+                        <button id="edit-save" class="btn btn-primary">💾 儲存</button>
+                        <button id="edit-cancel" class="btn btn-secondary">取消</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 刪除確認模態視窗 -->
+        <div id="confirm-modal" class="modal" style="display: none;">
+            <div class="modal-content modal-small">
+                <div class="modal-header">
+                    <h2>確認刪除</h2>
+                </div>
+                <div class="modal-body">
+                    <p id="confirm-message">確認刪除 『<span id="confirm-label"></span>』嗎?</p>
+                </div>
+                <div class="modal-actions">
+                    <button id="confirm-yes" class="btn btn-danger">刪除</button>
+                    <button id="confirm-no" class="btn btn-secondary">取消</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 通知吐司容器 -->
+        <div id="toast-container" class="toast-container"></div>
+    </div>
+
+    <!-- 核心模塊指令碼 -->
+    <script src="/src/js/storage.js" defer></script>
+    <script src="/src/js/timer.js" defer></script>
+    <script src="/src/js/alarm.js" defer></script>
+    <script src="/src/js/audio.js" defer></script>
+    <script src="/src/js/speech.js" defer></script>
+    <script src="/src/js/chat.js" defer></script>
+    <script src="/src/js/app.js" defer></script>
+
+    <!-- Service Worker 註冊 -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then(reg => console.log('Service Worker 已註冊'))
+                    .catch(err => console.log('Service Worker 註冊失敗:', err));
+            });
+        }
+    </script>
+</body>
+</html>
