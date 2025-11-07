@@ -142,35 +142,35 @@
 
 ### 用戶故事 1 的測試（可選）
 
-- [ ] T020 [P] [US1] `tests/unit/alarm.test.js` 中的鬧鐘建立單元測試:
+- [x] T020 [P] [US1] `tests/unit/alarm.test.js` 中的鬧鐘建立單元測試: ✅ 已實作
   - 測試有效鬧鐘建立的正確狀態
   - 測試驗證: 拒絕過去的 triggerTime
   - 測試持久化到儲存
 
-- [ ] T021 [P] [US1] `tests/unit/alarm.test.js` 中的鬧鐘觸發邏輯單元測試:
+- [x] T021 [P] [US1] `tests/unit/alarm.test.js` 中的鬧鐘觸發邏輯單元測試: ✅ 已實作
   - 測試時間到達時鬧鐘狀態變更為 "triggered"
   - 測試 'alarmTriggered' 事件發送
   - 使用 Date.now() Mock 模擬時間流逝
 
-- [ ] T022 [US1] `tests/integration/e2e.test.js` 中的鬧鐘建立流程整合測試:
+- [x] T022 [US1] `tests/integration/e2e.test.js` 中的鬧鐘建立流程整合測試: ✅ 已實作
   - 測試完整使用者流程: 輸入 → 建立 → 觸發 → 通知
   - 驗證視覺顯示在頁面上
   - 驗證聲音播放
 
 ### 用戶故事 1 的實作
 
-- [ ] T023 [P] [US1] 在 `src/components/chatbox.html` 建立聊天框使用者介面元件:
+- [x] T023 [P] [US1] 在 `src/components/chatbox.html` 建立聊天框使用者介面元件: ✅ 完成
   - 輸入欄位 id="chat-input"
   - 提交按鈕 id="chat-send"
   - 初始佔位符文字: "輸入時間或說話，例如『明天 9 點』或『五分鐘』"
   - 語音按鈕 id="voice-btn"（將在用戶故事 2 連接）
 
-- [ ] T024 [P] [US1] 在 `src/components/timerlist.html` 建立計時器清單容器:
+- [x] T024 [P] [US1] 在 `src/components/timerlist.html` 建立計時器清單容器: ✅ 完成
   - Div id="timer-list"
   - 空狀態訊息: "尚無計時器，開始建立一個吧"
   - 用於渲染項目的結構
 
-- [ ] T025 [US1] 在 `src/js/chat.js` 實作 ChatInput 解析器:
+- [x] T025 [US1] 在 `src/js/chat.js` 實作 ChatInput 解析器: ✅ 完成
   - 函數 `parseTimeInput(text)` 識別鬧鐘模式:
     - "明天 9 點" → {type: 'alarm', hour: 9, day: 'tomorrow'}
     - "下午 3 點半" → {type: 'alarm', hour: 15, minute: 30}
@@ -178,61 +178,61 @@
   - 回傳 {type, value} 或 null 如果無法識別
   - 使用正則表達式解析中文時間表達: /(\d+)點|(\d+):(\d+)/
 
-- [ ] T026 [US1] 在 `src/js/chat.js` 實作時間字串到時間戳的轉換:
+- [x] T026 [US1] 在 `src/js/chat.js` 實作時間字串到時間戳的轉換: ✅ 完成
   - 函數 `parseAlarmTime(input)` 將自然語言轉換為 unix 時間戳
   - 處理 "明天"、"後天"、相對日期
   - 無效時回傳時間戳或拋出 ValidationError
 
-- [ ] T027 [US1] 在 `src/js/app.js` 建立鬧鐘建立使用者介面處理器:
+- [x] T027 [US1] 在 `src/js/app.js` 建立鬧鐘建立使用者介面處理器: ✅ 完成
   - 監聽 "chat-send" 按鈕點擊
   - 獲取輸入值、解析它
   - 呼叫 `TimerApp.Alarm.create()` 使用解析資料
   - 清空輸入欄位
   - 使用使用者友善的訊息處理錯誤
 
-- [ ] T028 [P] [US1] 在 `src/js/app.js` 建立計時器項目渲染器:
+- [x] T028 [P] [US1] 在 `src/js/app.js` 建立計時器項目渲染器: ✅ 完成
   - 函數 `renderTimerItem(item)` 為單一計時器或鬧鐘建立 HTML
   - 顯示類型徽章: "⏰ 鬧鐘" 或 "⏱️ 倒數"
   - 顯示標籤、剩餘/觸發時間
   - 包含刪除按鈕
 
-- [ ] T029 [US1] 在 `src/js/app.js` 建立清單渲染器:
+- [x] T029 [US1] 在 `src/js/app.js` 建立清單渲染器: ✅ 完成
   - 函數 `renderList()` 從儲存中獲取排序的項目
   - 按 createdAt 降序排序（最新優先）
   - 為每個項目呼叫 `renderTimerItem()`
   - 插入 #timer-list
   - 處理空狀態
 
-- [ ] T030 [US1] 在 `src/js/app.js` 將清單更新連接到事件:
+- [x] T030 [US1] 在 `src/js/app.js` 將清單更新連接到事件: ✅ 完成
   - 監聽 'alarmCreated'、'alarmTriggered'、'alarmDeleted' 事件
   - 呼叫 `renderList()` 更新使用者介面
   - 使用事件委派為刪除按鈕
 
-- [ ] T031 [US1] 在 `src/js/app.js` 新增刪除功能:
+- [x] T031 [US1] 在 `src/js/app.js` 新增刪除功能: ✅ 完成
   - 處理刪除按鈕點擊（委派）
   - 呼叫 `TimerApp.Alarm.delete(id)`
   - 刪除前顯示確認對話框
 
-- [ ] T032 [US1] 實作鬧鐘觸發時的通知:
+- [x] T032 [US1] 實作鬧鐘觸發時的通知: ✅ 完成
   - 當 'alarmTriggered' 事件觸發時，顯示視覺通知:
     - 彈窗或模態視窗顯示鬧鐘標籤
     - "完成" 按鈕關閉
   - 呼叫 `TimerApp.Audio.play(alarm.soundId)`
   - 更新鬧鐘顯示為 "已觸發"
 
-- [ ] T033 [US1] 在 `src/css/style.css` 新增鬧鐘顯示樣式:
+- [x] T033 [US1] 在 `src/css/style.css` 新增鬧鐘顯示樣式: ✅ 完成
   - 計時器/鬧鐘項目卡片樣式
   - 類型徽章樣式（顏色區分）
   - 響應式網格佈局（行動裝置 1 欄、桌面 2+ 欄）
   - 刪除按鈕樣式
 
-**用戶故事 1 檢查點**: 
-- 使用者可透過文字輸入建立鬧鐘（例如 "明天 9 點"）
-- 鬧鐘在統一清單中顯示並標記為類型
-- 時間精準度足以滿足使用者介面需求（±幾秒可接受）
-- 使用者可刪除鬧鐘
-- 鬧鐘觸發時帶有通知 + 聲音
-- 所有視覺反饋正常工作
+**用戶故事 1 檢查點**: ✅ 完成
+- [x] 使用者可透過文字輸入建立鬧鐘（例如 "明天 9 點"）
+- [x] 鬧鐘在統一清單中顯示並標記為類型
+- [x] 時間精準度足以滿足使用者介面需求（±幾秒可接受）
+- [x] 使用者可刪除鬧鐘
+- [x] 鬧鐘觸發時帶有通知 + 聲音
+- [x] 所有視覺反饋正常工作
 
 ---
 
