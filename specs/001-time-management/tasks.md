@@ -34,28 +34,28 @@
 
 ---
 
-## 第 2 階段: 基礎模塊 (16-20 小時)
+## 第 2 階段: 基礎模塊 (16-20 小時) ✅ 完成
 
 **目的**: 所有用戶故事依賴的核心基礎設施
 
 **⚠️ 重要**: 所有基礎任務必須完成後才能開始用戶故事
 
-**檢查點**: 所有模塊功能正常且可獨立測試
+**檢查點**: 所有模塊功能正常且可獨立測試 ✅
 
 ### 儲存層（關鍵路徑）
 
-- [ ] T008 [P] 實作 `src/js/storage.js` - LocalStorage 抽象層：
+- [x] T008 [P] 實作 `src/js/storage.js` - LocalStorage 抽象層：
   - `init()` - 初始化儲存、檢查版本相容性
   - `save(key, value)` - 持久化到 LocalStorage（JSON 序列化）
   - `load(key)` - 從 LocalStorage 檢索
   - `clear()` - 清除所有資料
   - `export()` / `import()` - 資料備份/恢復
 
-- [ ] T009 [P] 新增儲存錯誤處理: `StorageError` 類別含有敘述性訊息
+- [x] T009 [P] 新增儲存錯誤處理: `StorageError` 類別含有敘述性訊息
 
 ### 計時器管理核心
 
-- [ ] T010 [P] 實作 `src/js/timer.js` 計時器模塊，包含：
+- [x] T010 [P] 實作 `src/js/timer.js` 計時器模塊，包含：
   - 資料結構: Timer 物件包含 id、type、label、totalSeconds、remainingSeconds、state、createdAt、soundId
   - `create(label, totalSeconds, soundId)` - 建立新計時器實體
   - `update(id, updates)` - 更新計時器屬性
@@ -64,20 +64,20 @@
   - `getActive()` - 獲取只有運行中的計時器
   - 狀態管理: "running" ↔ "paused" → "completed"
 
-- [ ] T011 [P] 新增計時器倒數邏輯到計時器模塊:
+- [x] T011 [P] 新增計時器倒數邏輯到計時器模塊:
   - `pause(id)` - 停止倒數並記錄 pausedAt
   - `resume(id)` - 從暫停狀態恢復
   - `_runCountdown(id)` - 內部間隔管理，1 秒更新一次
   - 校準: 每 10 秒檢查系統時間，修正 ±500ms 漂移
 
-- [ ] T012 [P] 在 `src/js/timer.js` 新增計時器驗證:
+- [x] T012 [P] 在 `src/js/timer.js` 新增計時器驗證:
   - 驗證 totalSeconds > 0
   - 驗證狀態轉移（只允許: running→paused、paused→running、任何→completed）
   - 防止對不存在計時器的操作（拋出 `NotFoundError`）
 
 ### 鬧鐘管理核心
 
-- [ ] T013 [P] 實作 `src/js/alarm.js` 鬧鐘模塊，包含：
+- [x] T013 [P] 實作 `src/js/alarm.js` 鬧鐘模塊，包含：
   - 資料結構: Alarm 物件包含 id、type、label、triggerTime、state、createdAt、soundId、isRecurring
   - `create(label, triggerTime, soundId)` - 建立新鬧鐘
   - `update(id, updates)` - 更新鬧鐘屬性（如已觸發則只允許更新 soundId）
@@ -85,48 +85,48 @@
   - `list()` - 獲取所有鬧鐘
   - `getPending()` - 獲取只有待觸發的鬧鐘（triggerTime > 現在）
 
-- [ ] T014 [P] 在 `src/js/alarm.js` 新增鬧鐘觸發偵測:
+- [x] T014 [P] 在 `src/js/alarm.js` 新增鬧鐘觸發偵測:
   - 每秒監控待觸發的鬧鐘
   - 當 triggerTime 到達時，發送 'alarmTriggered' 事件
   - 更新狀態為 "triggered"
   - 持久化變更到儲存
 
-- [ ] T015 [P] 在 `src/js/alarm.js` 新增鬧鐘驗證:
+- [x] T015 [P] 在 `src/js/alarm.js` 新增鬧鐘驗證:
   - 驗證 triggerTime > 現在（拒絕過去的時間）
   - 驗證狀態: "pending" | "triggered" | "cancelled"
   - 無效輸入時拋出 `ValidationError`
 
 ### 音頻與通知層
 
-- [ ] T016 [P] 實作 `src/js/audio.js` 音頻模塊，包含：
-  - 聲音註冊表: 映射 "alarm1" → `/assets/sounds/alarm1.mp3`、"alarm2" → `/assets/sounds/alarm2.mp3`
+- [x] T016 [P] 實作 `src/js/audio.js` 音頻模塊，包含：
+  - 聲音註冊表: 映射 "alarm1" → `/assets/sounds/alarm1.wav`、"alarm2" → `/assets/sounds/alarm2.wav`
   - `play(soundId)` - 播放音檔（處理 Web Audio API 和 HTML5 音頻後備）
   - `stop()` - 停止播放
   - `setSoundId(id)` - 設定預設聲音偏好
   - 錯誤處理: 音頻不可用時優雅降級
 
-- [ ] T017 [P] 建立佔位符聲音檔案:
-  - `assets/sounds/alarm1.mp3` - 標準鈴聲（佔位符 1 秒音調）
-  - `assets/sounds/alarm2.mp3` - 數位鐘聲（佔位符 1 秒音調）
+- [x] T017 [P] 建立佔位符聲音檔案:
+  - `assets/sounds/alarm1.wav` - 標準鈴聲（佔位符 1 秒音調）
+  - `assets/sounds/alarm2.wav` - 數位鐘聲（佔位符 1 秒音調）
 
 ### 事件系統
 
-- [ ] T018 [P] 在 `src/js/app.js` 實作事件分派器:
+- [x] T018 [P] 在 `src/js/app.js` 實作事件分派器:
   - `emitEvent(eventName, detail)` - 分派自訂 DOM 事件
   - 支援的事件: 'timerCreated'、'timerUpdated'、'timerPaused'、'timerCompleted'、'timerDeleted'、'alarmTriggered'、'alarmDeleted'
   - 確保所有計時器/鬧鐘操作發送適當事件
 
-- [ ] T019 [P] 在 `src/js/app.js` 新增全域狀態管理:
+- [x] T019 [P] 在 `src/js/app.js` 新增全域狀態管理:
   - 初始化 TimerApp.state 包含 items[]、settings{theme、defaultSound、language}
   - 自動同步狀態變更到儲存
   - 提供 TimerApp.getState() 和 TimerApp.setState(updates)
 
-**基礎檢查點**: 
-- 儲存完全功能且持久化
-- 計時器和鬧鐘模塊獨立運作
-- 音頻播放可用
-- 事件系統正常發送
-- timer-api.md 中的 11 項操作已實作
+**基礎檢查點**:  ✅ 完成
+- [x] 儲存完全功能且持久化
+- [x] 計時器和鬧鐘模塊獨立運作
+- [x] 音頻播放可用
+- [x] 事件系統正常發送
+- [x] timer-api.md 中的 11 項操作已實作
 
 ---
 
