@@ -58,6 +58,11 @@ const TimerApp = (() => {
             // 4b. 第 3 階段：設置聊天和列表事件
             setupChatInputHandler();
             attachListenerHandlers();
+            
+            // 4c. 第 4 階段：設置計時器和語音功能
+            setupTimerUpdateListener();
+            setupTimerCompletionListener();
+            setupVoiceButtonHandler();
 
             // 5. 初始化模塊（如需要時）
             await initializeModules();
@@ -892,6 +897,116 @@ const TimerApp = (() => {
     }
 
     // ============ 第 3 階段結束 ============
+
+    // ============ 第 4 階段：用戶故事 2 - 語音倒數計時 ============
+
+    /**
+     * T040 [P] [US2] 格式化時間顯示
+     * 將秒數轉換為 MM:SS 格式
+     */
+    function formatTime(seconds) {
+        if (!seconds || seconds < 0) return '00:00';
+        const minutes = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    }
+
+    /**
+     * T041 [US2] 監聽計時器更新事件並更新顯示
+     */
+    function setupTimerUpdateListener() {
+        document.addEventListener('timerUpdated', (e) => {
+            const timer = e.detail;
+            if (!timer || !timer.id) return;
+
+            const itemElement = document.querySelector(`[data-id="${timer.id}"]`);
+            if (!itemElement) return;
+
+            // 更新剩餘時間顯示
+            const timeElement = itemElement.querySelector('.item-time');
+            if (timeElement) {
+                timeElement.textContent = formatTime(timer.remainingSeconds || timer.totalSeconds);
+            }
+
+            // 視覺反饋：時間接近時改變顏色（可選）
+            if (timer.remainingSeconds && timer.remainingSeconds < 10) {
+                itemElement.classList.add('timer-critical');
+            } else {
+                itemElement.classList.remove('timer-critical');
+            }
+        });
+    }
+
+    /**
+     * T042 [P] [US2] 計時器完成處理器
+     */
+    function setupTimerCompletionListener() {
+        document.addEventListener('timerCompleted', (e) => {
+            const timer = e.detail;
+            console.log('計時器已完成:', timer);
+
+            showTimerNotification(timer);
+
+            // 更新列表
+            if (state.items) {
+                const idx = state.items.findIndex(item => item.id === timer.id);
+                if (idx >= 0) {
+                    state.items[idx].state = 'completed';
+                    state.items[idx].remainingSeconds = 0;
+                }
+                renderList();
+            }
+        });
+    }
+
+    /**
+     * T046 [US2] 語音按鈕功能
+     */
+    function setupVoiceButtonHandler() {
+        if (!DOM.voiceBtn) return;
+
+        DOM.voiceBtn.addEventListener('click', () => {
+            // 檢查語音支援
+            if (!SpeechRecognition || !SpeechRecognition.isSupported()) {
+                SpeechRecognition.showUnsupportedMessage();
+                return;
+            }
+
+            if (SpeechRecognition.isActive()) {
+                // 已在監聽中，停止
+                SpeechRecognition.stopVoiceInput();
+                DOM.voiceBtn.textContent = '🎤';
+                DOM.voiceBtn.classList.remove('listening');
+                return;
+            }
+
+            // 開始監聽
+            DOM.voiceBtn.textContent = '🎤 聽中...';
+            DOM.voiceBtn.classList.add('listening');
+
+            SpeechRecognition.startVoiceInput(
+                (transcript) => {
+                    console.log('語音識別結果:', transcript);
+                    DOM.voiceBtn.textContent = '🎤';
+                    DOM.voiceBtn.classList.remove('listening');
+
+                    // 將識別結果填入輸入框並提交
+                    if (DOM.chatInput) {
+                        DOM.chatInput.value = transcript;
+                        handleChatSubmit();
+                    }
+                },
+                (error) => {
+                    console.error('語音識別錯誤:', error);
+                    DOM.voiceBtn.textContent = '🎤';
+                    DOM.voiceBtn.classList.remove('listening');
+                    showError(error.message || '語音輸入出錯');
+                }
+            );
+        });
+    }
+
+    // ============ 第 4 階段結束 ============
 
     /**
      * 公開 API

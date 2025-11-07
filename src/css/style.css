@@ -988,3 +988,98 @@ body {
         opacity: 1;
     }
 }
+
+/* ====================================
+   第 4 階段：計時器倒數與語音輸入
+   ==================================== */
+
+/* 語音按鈕狀態 */
+.voice-btn.listening {
+    background-color: var(--warning-color);
+    animation: microphone-pulse 1s ease-in-out infinite;
+}
+
+@keyframes microphone-pulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+/* 計時器倒數顯示加強 */
+.item-time {
+    font-size: 1.875rem;
+    font-weight: 700;
+    font-family: 'Monaco', 'Courier New', monospace;
+    color: var(--primary-color);
+    transition: color var(--transition-normal);
+}
+
+/* 計時器接近完成時的視覺反饋 */
+.timer-item.timer-critical .item-time {
+    color: var(--danger-color);
+    animation: critical-pulse 0.5s ease-in-out infinite;
+}
+
+@keyframes critical-pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.6;
+    }
+}
+
+/* 計時器進度顏色漸變 */
+.timer-item.running .item-time {
+    background: linear-gradient(135deg, var(--success-color), var(--primary-color));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* 暫停/恢復按鈕樣式改進 */
+.pause-resume-btn {
+    background: linear-gradient(135deg, var(--info-color), #1d4ed8);
+    transition: all var(--transition-fast);
+}
+
+.pause-resume-btn:active {
+    transform: scale(0.95);
+}
+
+/* 響應式調整 */
+@media (max-width: 768px) {
+    .item-time {
+        font-size: 1.5rem;
+    }
+    
+    .pause-resume-btn,
+    .delete-btn {
+        padding: var(--spacing-sm) var(--spacing-md);
+        font-size: var(--font-size-sm);
+    }
+}
+
+@media (max-width: 480px) {
+    .item-time {
+        font-size: 1.25rem;
+    }
+    
+    .item-actions {
+        flex-direction: column;
+    }
+    
+    .pause-resume-btn,
+    .delete-btn {
+        min-height: 44px;
+        padding: var(--spacing-md) var(--spacing-sm);
+    }
+    
+    .chat-input {
+        padding: var(--spacing-md) var(--spacing-sm);
+        font-size: 16px;  /* 防止 iOS 自動放大 */
+    }
+}
