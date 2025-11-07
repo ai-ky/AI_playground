@@ -882,6 +882,11 @@ const TimerApp = (() => {
             return;
         }
 
+        // T057: 檢查計時器數量限制
+        if (!checkTimerLimit()) {
+            return;
+        }
+
         try {
             const timer = TimerApp.Timer.create(
                 timerData.label || '計時器',
@@ -1007,6 +1012,107 @@ const TimerApp = (() => {
     }
 
     // ============ 第 4 階段結束 ============
+
+    // ============ 第 5 階段：用戶故事 3 - 管理多個計時器 ============
+
+    /**
+     * T057 [US3] 檢查計時器數量限制
+     */
+    function checkTimerLimit() {
+        const maxTimers = 20;
+        const currentCount = (state.items || []).length;
+        
+        if (currentCount >= maxTimers) {
+            showError(`已達到最大計時器數量（${maxTimers} 個），請刪除舊的計時器`);
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * T058 [US3] 更新清單元數據顯示
+     */
+    function updateListMetadata() {
+        if (!DOM.listInfo) return;
+        
+        const items = state.items || [];
+        const activeCount = items.filter(i => i.state === 'running' || i.state === 'paused').length;
+        
+        let text = `計時器: ${items.length} 個`;
+        if (activeCount >= 5) {
+            text += ' (所有計時器獨立運行)';
+        }
+        
+        DOM.listInfo.textContent = text;
+    }
+
+    /**
+     * T059 [US3] 效能監控
+     */
+    const performanceMetrics = {
+        lastRenderTime: 0,
+        renderCount: 0
+    };
+
+    function measureRenderPerformance(fn) {
+        const start = performance.now();
+        fn();
+        const duration = performance.now() - start;
+        
+        performanceMetrics.lastRenderTime = duration;
+        performanceMetrics.renderCount++;
+        
+        if (duration > 100) {
+            console.warn(`⚠️ 清單渲染耗時 ${duration.toFixed(2)}ms (建議 < 50ms)`);
+        }
+        
+        if (duration > 50) {
+            console.log(`📊 渲染性能: ${duration.toFixed(2)}ms`);
+        }
+    }
+
+    /**
+     * 優化的清單渲染（T055）
+     * 只更新單個計時器項目，而不是整個清單
+     */
+    function updateTimerItemOnly(timerId) {
+        const itemElement = document.querySelector(`[data-id="${timerId}"]`);
+        if (!itemElement) return;
+        
+        const item = (state.items || []).find(i => i.id === timerId);
+        if (!item) return;
+        
+        // 只更新時間顯示
+        const timeElement = itemElement.querySelector('.item-time');
+        if (timeElement && item.type === 'timer') {
+            timeElement.textContent = formatTime(item.remainingSeconds || item.totalSeconds);
+        }
+        
+        // 更新狀態徽章
+        const stateElement = itemElement.querySelector('.item-state');
+        if (stateElement) {
+            const badges = [];
+            if (item.state === 'running') badges.push('<span class="state-badge running">運行中</span>');
+            if (item.state === 'paused') badges.push('<span class="state-badge paused">已暫停</span>');
+            if (item.state === 'completed' || item.state === 'triggered') {
+                badges.push(`<span class="state-badge completed">已${item.type === 'alarm' ? '觸發' : '完成'}</span>`);
+            }
+            stateElement.innerHTML = badges.join('');
+        }
+    }
+
+    /**
+     * 修改原有的 renderList 以支持性能優化
+     */
+    const originalRenderList = renderList;
+    renderList = function() {
+        measureRenderPerformance(() => {
+            originalRenderList.call(this);
+            updateListMetadata();
+        });
+    };
+
+    // ============ 第 5 階段結束 ============
 
     /**
      * 公開 API
