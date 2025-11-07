@@ -271,70 +271,70 @@
 
 ### 用戶故事 2 的實作
 
-- [ ] T038 [P] [US2] 在 `src/js/chat.js` 中為計時器模式擴展 ChatInput 解析器:
+- [x] T038 [P] [US2] 在 `src/js/chat.js` 中為計時器模式擴展 ChatInput 解析器: ✅ 完成
   - 新增計時器偵測: "5 分鐘"、"30 秒"、"2 小時"、"1.5 小時"
   - 回傳 {type: 'timer', seconds: <number>}
   - 支援中文和英文: "5 minutes"、"30 seconds"
 
-- [ ] T039 [US2] 在 `src/js/app.js` 實作計時器建立處理器:
+- [x] T039 [US2] 在 `src/js/app.js` 實作計時器建立處理器: ✅ 完成
   - 偵測解析輸入 type === 'timer'
   - 從輸入中擷取可選標籤（例如 "5 分鐘工作" → label="工作"）
   - 呼叫 `TimerApp.Timer.create(label, seconds, soundId)`
   - 使用者友善的錯誤訊息
 
-- [ ] T040 [P] [US2] 在 `src/js/app.js` 實作計時器進度顯示:
+- [x] T040 [P] [US2] 在 `src/js/app.js` 實作計時器進度顯示: ✅ 完成
   - 函數 `formatTime(seconds)` → "MM:SS" 格式
   - 範例: 245 秒 → "04:05"
   - 更新計時器項目顯示 `<span class="timer-remaining">{formatted}</span>`
 
-- [ ] T041 [US2] 在 `src/js/app.js` 新增計時器倒數顯示更新:
+- [x] T041 [US2] 在 `src/js/app.js` 新增計時器倒數顯示更新: ✅ 完成
   - 監聽 'timerUpdated' 事件（每 1 秒觸發）
   - 對於每個活躍計時器，用新的 remainingSeconds 更新顯示
   - 使用防抖減少過度的 DOM 更新
 
-- [ ] T042 [P] [US2] 在 `src/js/app.js` 新增計時器完成處理器:
+- [x] T042 [P] [US2] 在 `src/js/app.js` 新增計時器完成處理器: ✅ 完成
   - 監聽 'timerCompleted' 事件
   - 顯示通知: "{label} 完成！"（含完成時間）
   - 播放聲音: `TimerApp.Audio.play(timer.soundId)`
   - 更新顯示為 "已完成"
   - 可選提供 "再來一次" 按鈕（建立相同持續時間）
 
-- [ ] T043 [US2] 在 `src/components/timerlist.html` 為計時器實作暫停/恢復按鈕:
+- [x] T043 [US2] 在 `src/components/timerlist.html` 為計時器實作暫停/恢復按鈕: ✅ 完成
   - 為執行中計時器新增暫停按鈕（id="pause-btn-{id}"）
   - 為暫停計時器新增恢復按鈕（id="resume-btn-{id}"）
   - 在按鈕工具提示顯示剩餘時間
 
-- [ ] T044 [US2] 在 `src/js/app.js` 連接暫停/恢復處理器:
+- [x] T044 [US2] 在 `src/js/app.js` 連接暫停/恢復處理器: ✅ 完成
   - 暫停/恢復按鈕的委派點擊監聽
   - 呼叫 `TimerApp.Timer.pause(id)` 或 `TimerApp.Timer.resume(id)`
   - 更新按鈕狀態（暫停↔恢復）
   - 驗證狀態轉移正確
 
-- [ ] T045 [P] [US2] 在 `src/js/speech.js` 實作 Web Speech API 整合:
+- [x] T045 [P] [US2] 在 `src/js/speech.js` 實作 Web Speech API 整合: ✅ 完成
   - 初始化 SpeechRecognition（Chrome/Edge）或 polyfill 檢查
   - 函數 `startVoiceInput(onResult, onError)`
   - 配置: lang='zh-TW'、continuous=true、interimResults=true
   - 將識別的文字回傳給呼叫者
   - 優雅地處理錯誤（無麥克風、權限被拒）
 
-- [ ] T046 [US2] 在 `src/js/app.js` 新增語音按鈕功能:
+- [x] T046 [US2] 在 `src/js/app.js` 新增語音按鈕功能: ✅ 完成
   - 點擊 #voice-btn → 開始聽取
   - 視覺反饋: 按鈕文字 → "聽中..." 或麥克風圖示動畫
   - 語音結束時，解析文字並建立計時器/鬧鐘
   - 無法識別文字: "沒有聽到，請重試"
 
-- [ ] T047 [P] [US2] 在 `src/js/speech.js` 新增不支援語音的瀏覽器後備:
+- [x] T047 [P] [US2] 在 `src/js/speech.js` 新增不支援語音的瀏覽器後備: ✅ 完成
   - 偵測 SpeechRecognition 是否可用
   - 不可用時: 顯示吐司 "您的瀏覽器不支援語音輸入，請使用文字輸入"
   - 確保文字輸入始終有效
 
-- [ ] T048 [US2] 在 `src/css/style.css` 擴展計時器顯示樣式:
+- [x] T048 [US2] 在 `src/css/style.css` 擴展計時器顯示樣式: ✅ 完成
   - 計時器倒數顯示: 大、突出的字體（例如 2.5rem）
   - 暫停/恢復按鈕樣式
   - 倒數顏色變更: 綠色 → 橙色 → 紅色（隨時間遞減）（可選）
   - 動畫: 微妙脈衝/閃爍（< 10 秒剩餘）（可選）
 
-- [ ] T049 [P] [US2] 在 `src/css/responsive.css` 新增行動裝置媒體查詢:
+- [x] T049 [P] [US2] 在 `src/css/responsive.css` 新增行動裝置媒體查詢: ✅ 完成
   - 計時器顯示在小螢幕上可讀
   - 按鈕易於點擊（最小 44px 高度）
   - 聊天輸入全寬度行動裝置
