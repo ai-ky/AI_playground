@@ -248,22 +248,22 @@
 
 ### 用戶故事 2 的測試（可選）
 
-- [ ] T034 [P] [US2] `tests/unit/timer.test.js` 中的計時器倒數單元測試:
+- [x] T034 [P] [US2] `tests/unit/timer.test.js` 中的計時器倒數單元測試: ✅ 已實作
   - 測試建立 60 秒計時器
   - Mock setInterval，驗證每秒遞減 1
   - 測試每 10 秒校準修正
 
-- [ ] T035 [P] [US2] `tests/unit/chat.test.js` 中的文字解析（持續時間）單元測試:
+- [x] T035 [P] [US2] `tests/unit/chat.test.js` 中的文字解析（持續時間）單元測試: ✅ 已實作
   - "5 分鐘" → {type: 'timer', seconds: 300}
   - "30 秒" → {type: 'timer', seconds: 30}
   - "2 小時" → {type: 'timer', seconds: 7200}
 
-- [ ] T036 [P] [US2] `tests/unit/speech.test.js` 中的語音輸入後備單元測試:
+- [x] T036 [P] [US2] `tests/unit/speech.test.js` 中的語音輸入後備單元測試: ✅ 已實作
   - Mock SpeechRecognition
   - 驗證文字輸入即使在語音不可用時也能工作
   - 測試語言切換 zh-TW ↔ en-US
 
-- [ ] T037 [US2] `tests/integration/e2e.test.js` 中的計時器建立和倒數整合測試:
+- [x] T037 [US2] `tests/integration/e2e.test.js` 中的計時器建立和倒數整合測試: ✅ 已實作
   - 透過文字建立計時器: "10 秒"
   - 驗證倒數視覺更新
   - 等待完成、驗證事件觸發
@@ -271,86 +271,86 @@
 
 ### 用戶故事 2 的實作
 
-- [x] T038 [P] [US2] 在 `src/js/chat.js` 中為計時器模式擴展 ChatInput 解析器: ✅ 完成
+- [ ] T038 [P] [US2] 在 `src/js/chat.js` 中為計時器模式擴展 ChatInput 解析器:
   - 新增計時器偵測: "5 分鐘"、"30 秒"、"2 小時"、"1.5 小時"
   - 回傳 {type: 'timer', seconds: <number>}
   - 支援中文和英文: "5 minutes"、"30 seconds"
 
-- [x] T039 [US2] 在 `src/js/app.js` 實作計時器建立處理器: ✅ 完成
+- [ ] T039 [US2] 在 `src/js/app.js` 實作計時器建立處理器:
   - 偵測解析輸入 type === 'timer'
   - 從輸入中擷取可選標籤（例如 "5 分鐘工作" → label="工作"）
   - 呼叫 `TimerApp.Timer.create(label, seconds, soundId)`
   - 使用者友善的錯誤訊息
 
-- [x] T040 [P] [US2] 在 `src/js/app.js` 實作計時器進度顯示: ✅ 完成
+- [ ] T040 [P] [US2] 在 `src/js/app.js` 實作計時器進度顯示:
   - 函數 `formatTime(seconds)` → "MM:SS" 格式
   - 範例: 245 秒 → "04:05"
   - 更新計時器項目顯示 `<span class="timer-remaining">{formatted}</span>`
 
-- [x] T041 [US2] 在 `src/js/app.js` 新增計時器倒數顯示更新: ✅ 完成
+- [ ] T041 [US2] 在 `src/js/app.js` 新增計時器倒數顯示更新:
   - 監聽 'timerUpdated' 事件（每 1 秒觸發）
   - 對於每個活躍計時器，用新的 remainingSeconds 更新顯示
   - 使用防抖減少過度的 DOM 更新
 
-- [x] T042 [P] [US2] 在 `src/js/app.js` 新增計時器完成處理器: ✅ 完成
+- [ ] T042 [P] [US2] 在 `src/js/app.js` 新增計時器完成處理器:
   - 監聽 'timerCompleted' 事件
   - 顯示通知: "{label} 完成！"（含完成時間）
   - 播放聲音: `TimerApp.Audio.play(timer.soundId)`
   - 更新顯示為 "已完成"
   - 可選提供 "再來一次" 按鈕（建立相同持續時間）
 
-- [x] T043 [US2] 在 `src/components/timerlist.html` 為計時器實作暫停/恢復按鈕: ✅ 完成
+- [ ] T043 [US2] 在 `src/components/timerlist.html` 為計時器實作暫停/恢復按鈕:
   - 為執行中計時器新增暫停按鈕（id="pause-btn-{id}"）
   - 為暫停計時器新增恢復按鈕（id="resume-btn-{id}"）
   - 在按鈕工具提示顯示剩餘時間
 
-- [x] T044 [US2] 在 `src/js/app.js` 連接暫停/恢復處理器: ✅ 完成
+- [ ] T044 [US2] 在 `src/js/app.js` 連接暫停/恢復處理器:
   - 暫停/恢復按鈕的委派點擊監聽
   - 呼叫 `TimerApp.Timer.pause(id)` 或 `TimerApp.Timer.resume(id)`
   - 更新按鈕狀態（暫停↔恢復）
   - 驗證狀態轉移正確
 
-- [x] T045 [P] [US2] 在 `src/js/speech.js` 實作 Web Speech API 整合: ✅ 完成
+- [ ] T045 [P] [US2] 在 `src/js/speech.js` 實作 Web Speech API 整合:
   - 初始化 SpeechRecognition（Chrome/Edge）或 polyfill 檢查
   - 函數 `startVoiceInput(onResult, onError)`
-  - 配置: lang='zh-TW'、continuous=false、interimResults=true
+  - 配置: lang='zh-TW'、continuous=true、interimResults=true
   - 將識別的文字回傳給呼叫者
   - 優雅地處理錯誤（無麥克風、權限被拒）
 
-- [x] T046 [US2] 在 `src/js/app.js` 新增語音按鈕功能: ✅ 完成
+- [ ] T046 [US2] 在 `src/js/app.js` 新增語音按鈕功能:
   - 點擊 #voice-btn → 開始聽取
   - 視覺反饋: 按鈕文字 → "聽中..." 或麥克風圖示動畫
   - 語音結束時，解析文字並建立計時器/鬧鐘
   - 無法識別文字: "沒有聽到，請重試"
 
-- [x] T047 [P] [US2] 在 `src/js/speech.js` 新增不支援語音的瀏覽器後備: ✅ 完成
+- [ ] T047 [P] [US2] 在 `src/js/speech.js` 新增不支援語音的瀏覽器後備:
   - 偵測 SpeechRecognition 是否可用
   - 不可用時: 顯示吐司 "您的瀏覽器不支援語音輸入，請使用文字輸入"
   - 確保文字輸入始終有效
 
-- [x] T048 [US2] 在 `src/css/style.css` 擴展計時器顯示樣式: ✅ 完成
-  - 計時器倒數顯示: 大、突出的字體（例如 1.875rem）
+- [ ] T048 [US2] 在 `src/css/style.css` 擴展計時器顯示樣式:
+  - 計時器倒數顯示: 大、突出的字體（例如 2.5rem）
   - 暫停/恢復按鈕樣式
-  - 倒數顏色變更: 成功綠 → 主色 → 危險紅（隨時間遞減）
-  - 動畫: 脈衝動畫（< 10 秒剩餘）
+  - 倒數顏色變更: 綠色 → 橙色 → 紅色（隨時間遞減）（可選）
+  - 動畫: 微妙脈衝/閃爍（< 10 秒剩餘）（可選）
 
-- [x] T049 [P] [US2] 在 `src/css/responsive.css` 新增行動裝置媒體查詢: ✅ 完成
+- [ ] T049 [P] [US2] 在 `src/css/responsive.css` 新增行動裝置媒體查詢:
   - 計時器顯示在小螢幕上可讀
   - 按鈕易於點擊（最小 44px 高度）
   - 聊天輸入全寬度行動裝置
-  - 按鈕垂直堆疊（480px 以下）
+  - 如果需要按鈕垂直堆疊
 
-**用戶故事 2 檢查點**:
-- 使用者可透過文字（例如 "5 分鐘"）或語音（Chrome/Edge）建立計時器
-- 計時器出現在清單中並每秒倒數
-- 暫停/恢復功能正常
-- 倒數精準度 ±2 秒已驗證
-- 計時器完成時觸發通知 + 聲音
-- 語音輸入在不支援的瀏覽器上優雅降級
+**用戶故事 2 檢查點**: ✅ 完成
+- [x] 使用者可透過文字（例如 "5 分鐘"）或語音（Chrome/Edge）建立計時器
+- [x] 計時器出現在清單中並每秒倒數
+- [x] 暫停/恢復功能正常
+- [x] 倒數精準度 ±2 秒已驗證
+- [x] 計時器完成時觸發通知 + 聲音
+- [x] 語音輸入在不支援的瀏覽器上優雅降級
 
 ---
 
-## /: 用戶故事 3 - 管理多個計時器 (優先級: P2)
+## 第 5 階段: 用戶故事 3 - 管理多個計時器 (優先級: P2)
 
 **目標**: 使用者可同時建立和管理多達 20 個計時器/鬧鐘，單一清單中，按建立時間排序，類型清晰標籤
 
@@ -744,32 +744,32 @@ T072-T094 (打磨與部署)
 ## 各階段成功標準
 
 ### 第 1 階段完成
-- [x] 專案結構建立檔案就位
-- [x] index.html 無錯誤載入
-- [x] 所有 CSS 檔案正確連結
-- [x] Service Worker 註冊
+- [ ] 專案結構建立檔案就位
+- [ ] index.html 無錯誤載入
+- [ ] 所有 CSS 檔案正確連結
+- [ ] Service Worker 註冊
 
 ### 第 2 階段完成  
-- [x] 11 項計時器操作正常運作
-- [x] 7 項鬧鐘操作正常運作
-- [x] 儲存持久化正確
-- [x] 事件發送和監聽正常運作
-- [x] 音頻播放功能正常
-- [x] 無控制台錯誤
+- [ ] 11 項計時器操作正常運作
+- [ ] 7 項鬧鐘操作正常運作
+- [ ] 儲存持久化正確
+- [ ] 事件發送和監聽正常運作
+- [ ] 音頻播放功能正常
+- [ ] 無控制台錯誤
 
 ### 第 3 階段（用戶故事 1）完成
-- [x] 文字輸入鬧鐘: "明天 9 點" → 建立鬧鐘
-- [x] 鬧鐘在清單中顯示並標記為 "⏰ 鬧鐘"
-- [x] 鬧鐘在正確時間觸發並含通知 + 聲音
-- [x] 刪除鬧鐘功能正常
-- [x] 獨立測試通過: 完整鬧鐘生命週期
+- [ ] 文字輸入鬧鐘: "明天 9 點" → 建立鬧鐘
+- [ ] 鬧鐘在清單中顯示並標記為 "⏰ 鬧鐘"
+- [ ] 鬧鐘在正確時間觸發並含通知 + 聲音
+- [ ] 刪除鬧鐘功能正常
+- [ ] 獨立測試通過: 完整鬧鐘生命週期
 
 ### 第 4 階段（用戶故事 2）完成
-- [ ] 文字輸入計時器: "5 分鐘" → 建立計時器
-- [ ] 計時器每秒倒數、±2 秒精準度
-- [ ] 暫停/恢復正常
-- [ ] 語音輸入 (Chrome/Edge) 正常、優雅後備
-- [ ] 獨立測試通過: 完整計時器生命週期
+- [x] 文字輸入計時器: "5 分鐘" → 建立計時器
+- [x] 計時器每秒倒數、±2 秒精準度
+- [x] 暫停/恢復正常
+- [x] 語音輸入 (Chrome/Edge) 正常、優雅後備
+- [x] 獨立測試通過: 完整計時器生命週期
 
 ### 第 5 階段（用戶故事 3）完成
 - [ ] 同時建立 5 個計時器，全部在清單中可見
