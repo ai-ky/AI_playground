@@ -1,0 +1,84 @@
+{
+  "name": "時間管理網站",
+  "short_name": "時間管理",
+  "description": "支援鬧鐘、倒數計時、語音輸入的時間管理應用程式",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#ffffff",
+  "theme_color": "#4f46e5",
+  "scope": "/",
+  "lang": "zh-TW",
+  "dir": "ltr",
+  "categories": ["productivity", "utilities"],
+  "screenshots": [
+    {
+      "src": "/assets/icons/screenshot-1.png",
+      "sizes": "540x720",
+      "type": "image/png",
+      "form_factor": "narrow"
+    },
+    {
+      "src": "/assets/icons/screenshot-2.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide"
+    }
+  ],
+  "icons": [
+    {
+      "src": "/assets/icons/favicon.ico",
+      "sizes": "64x64",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "/assets/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "建立計時器",
+      "short_name": "計時器",
+      "description": "快速建立新計時器",
+      "url": "/?action=timer",
+      "icons": [
+        {
+          "src": "/assets/icons/timer-shortcut.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "建立鬧鐘",
+      "short_name": "鬧鐘",
+      "description": "快速建立新鬧鐘",
+      "url": "/?action=alarm",
+      "icons": [
+        {
+          "src": "/assets/icons/alarm-shortcut.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ],
+  "share_target": {
+    "action": "/share",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "text": "text",
+      "url": "url"
+    }
+  }
+}

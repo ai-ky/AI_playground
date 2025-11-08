@@ -1,0 +1,1423 @@
+/**
+ * 時間管理網站 - 主應用程式
+ * 全域 TimerApp 命名空間初始化
+ */
+
+const TimerApp = (() => {
+    // 私有變數
+    let state = {
+        items: [],
+        settings: {
+            theme: 'light',
+            defaultSound: 'alarm1',
+            language: 'zh_TW'
+        },
+        ui: {
+            selectedId: null,
+            isRecording: false,
+            showSettings: false
+        }
+    };
+
+    const DOM = {
+        app: null,
+        chatInput: null,
+        chatSend: null,
+        voiceBtn: null,
+        timerList: null,
+        settingsBtn: null,
+        settingsModal: null,
+        editModal: null,
+        confirmModal: null,
+        toastContainer: null,
+        statusIndicator: null,
+        inputError: null,
+        listInfo: null
+    };
+
+    /**
+     * 初始化應用程式
+     */
+    async function init() {
+        console.log('時間管理應用程式初始化中...');
+
+        try {
+            // 1. 快取 DOM 元素
+            cacheDOM();
+
+            // 2. 載入設定和狀態
+            await loadSettings();
+            await loadState();
+
+            // 3. 應用主題
+            applyTheme();
+
+            // 4. 設定事件監聽
+            setupEventListeners();
+            
+            // 4b. 第 3 階段：設置聊天和列表事件
+            setupChatInputHandler();
+            attachListenerHandlers();
+            
+            // 4c. 第 4 階段：設置計時器和語音功能
+            setupTimerUpdateListener();
+            setupTimerCompletionListener();
+            setupVoiceButtonHandler();
+
+            // 5. 初始化模塊（如需要時）
+            await initializeModules();
+
+            // 6. 渲染初始 UI
+            render();
+
+            // 7. 設定監控（線上/離線、計時器更新等）
+            setupMonitoring();
+
+            console.log('✅ 應用程式已準備就緒');
+        } catch (error) {
+            console.error('❌ 應用程式初始化失敗:', error);
+            showError('應用程式啟動失敗，請重新整理頁面');
+        }
+    }
+
+    /**
+     * 快取 DOM 元素
+     */
+    function cacheDOM() {
+        DOM.app = document.getElementById('app');
+        DOM.chatInput = document.getElementById('chat-input');
+        DOM.chatSend = document.getElementById('chat-send');
+        DOM.voiceBtn = document.getElementById('voice-btn');
+        DOM.timerList = document.getElementById('timer-list');
+        DOM.settingsBtn = document.getElementById('settings-btn');
+        DOM.settingsModal = document.getElementById('settings-modal');
+        DOM.editModal = document.getElementById('edit-modal');
+        DOM.confirmModal = document.getElementById('confirm-modal');
+        DOM.toastContainer = document.getElementById('toast-container');
+        DOM.statusIndicator = document.getElementById('status-indicator');
+        DOM.inputError = document.getElementById('input-error');
+        DOM.listInfo = document.getElementById('list-info');
+
+        if (!DOM.app) {
+            throw new Error('應用程式容器未找到 (#app)');
+        }
+    }
+
+    /**
+     * 從儲存載入設定
+     */
+    async function loadSettings() {
+        if (window.TimerApp?.Storage?.load) {
+            const savedSettings = await window.TimerApp.Storage.load('settings');
+            if (savedSettings) {
+                state.settings = { ...state.settings, ...savedSettings };
+            }
+        }
+    }
+
+    /**
+     * 從儲存載入狀態
+     */
+    async function loadState() {
+        if (window.TimerApp?.Storage?.load) {
+            const savedItems = await window.TimerApp.Storage.load('items');
+            if (Array.isArray(savedItems)) {
+                state.items = savedItems;
+            }
+        }
+    }
+
+    /**
+     * 應用選定的主題
+     */
+    function applyTheme() {
+        if (state.settings.theme === 'dark') {
+            document.body.classList.add('dark-theme');
+        } else {
+            document.body.classList.remove('dark-theme');
+        }
+    }
+
+    /**
+     * 設定事件監聽
+     */
+    function setupEventListeners() {
+        // 聊天框事件
+        DOM.chatSend?.addEventListener('click', handleChatSend);
+        DOM.chatInput?.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') handleChatSend();
+        });
+
+        // 語音按鈕
+        DOM.voiceBtn?.addEventListener('click', handleVoiceInput);
+
+        // 設定按鈕
+        DOM.settingsBtn?.addEventListener('click', () => {
+            showModal(DOM.settingsModal);
+        });
+
+        // 模態視窗關閉按鈕
+        document.querySelectorAll('.close-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.target.closest('.modal').style.display = 'none';
+            });
+        });
+
+        // 編輯模態事件處理 (T064, T065)
+        const editSaveBtn = document.getElementById('edit-save');
+        const editCancelBtn = document.getElementById('edit-cancel');
+        const editLabelInput = document.getElementById('edit-label');
+
+        if (editSaveBtn) {
+            editSaveBtn.addEventListener('click', handleEditSave);
+        }
+
+        if (editCancelBtn) {
+            editCancelBtn.addEventListener('click', () => {
+                DOM.editModal.style.display = 'none';
+            });
+        }
+
+        if (editLabelInput) {
+            editLabelInput.addEventListener('input', updateLabelCount);
+        }
+
+        // 確認刪除模態事件處理 (T067)
+        const confirmYesBtn = document.getElementById('confirm-yes');
+        const confirmNoBtn = document.getElementById('confirm-no');
+
+        if (confirmYesBtn) {
+            confirmYesBtn.addEventListener('click', handleConfirmDelete);
+        }
+
+        if (confirmNoBtn) {
+            confirmNoBtn.addEventListener('click', () => {
+                DOM.confirmModal.style.display = 'none';
+            });
+        }
+
+        // 設定事件處理 (T073)
+        const themeSelect = document.getElementById('theme-select');
+        const soundSelect = document.getElementById('sound-select');
+        const languageSelect = document.getElementById('language-select');
+        const clearAllBtn = document.getElementById('clear-all-btn');
+
+        if (themeSelect) {
+            themeSelect.value = state.settings.theme || 'light';
+            themeSelect.addEventListener('change', (e) => {
+                state.settings.theme = e.target.value;
+                applyTheme();
+                if (window.TimerApp?.Storage?.save) {
+                    window.TimerApp.Storage.save('settings', state.settings);
+                }
+                showToast(`已切換至${e.target.value === 'dark' ? '深色' : '淺色'}主題`);
+            });
+        }
+
+        if (soundSelect) {
+            soundSelect.value = state.settings.defaultSound || 'alarm1';
+            soundSelect.addEventListener('change', (e) => {
+                state.settings.defaultSound = e.target.value;
+                if (window.TimerApp?.Storage?.save) {
+                    window.TimerApp.Storage.save('settings', state.settings);
+                }
+                showToast('已更新預設提示音');
+            });
+        }
+
+        if (languageSelect) {
+            languageSelect.value = state.settings.language || 'zh_TW';
+            languageSelect.addEventListener('change', (e) => {
+                state.settings.language = e.target.value;
+                if (window.TimerApp?.Storage?.save) {
+                    window.TimerApp.Storage.save('settings', state.settings);
+                }
+                showToast('已更新語言設定（後續會套用）');
+            });
+        }
+
+        if (clearAllBtn) {
+            clearAllBtn.addEventListener('click', () => {
+                if (confirm('確認要清除所有資料嗎？此操作無法復原。')) {
+                    if (window.TimerApp?.Storage?.clear) {
+                        window.TimerApp.Storage.clear();
+                    }
+                    state.items = [];
+                    renderList();
+                    DOM.settingsModal.style.display = 'none';
+                    showToast('已清除所有資料');
+                }
+            });
+        }
+
+        // 線上/離線事件
+        window.addEventListener('online', updateOnlineStatus);
+        window.addEventListener('offline', updateOnlineStatus);
+
+        // PWA 安裝提示 (T077)
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            // 可選：顯示安裝按鈕
+            const installBtn = document.getElementById('install-btn');
+            if (installBtn) {
+                installBtn.style.display = 'block';
+                installBtn.addEventListener('click', async () => {
+                    if (deferredPrompt) {
+                        deferredPrompt.prompt();
+                        const { outcome } = await deferredPrompt.userChoice;
+                        console.log(`用戶回應安裝提示: ${outcome}`);
+                        deferredPrompt = null;
+                        installBtn.style.display = 'none';
+                    }
+                });
+            }
+        });
+
+        window.addEventListener('appinstalled', () => {
+            console.log('PWA 已安裝');
+            showToast('應用程式已安裝，可離線使用！');
+            deferredPrompt = null;
+        });
+
+        // 自訂事件監聽
+        setupCustomEventListeners();
+    }
+
+    /**
+     * T064 [US4] 處理編輯保存
+     */
+    function handleEditSave() {
+        if (!DOM.editModal) return;
+
+        const itemId = DOM.editModal.dataset.itemId;
+        const itemType = DOM.editModal.dataset.itemType;
+        const labelInput = document.getElementById('edit-label');
+        const soundSelect = document.getElementById('edit-sound');
+
+        if (!itemId || !labelInput) return;
+
+        const label = labelInput.value.trim();
+        if (!label) {
+            showError('標籤不能為空');
+            return;
+        }
+
+        if (label.length > 50) {
+            showError('標籤不能超過 50 個字符');
+            return;
+        }
+
+        const updates = {
+            label,
+            soundId: soundSelect ? soundSelect.value : 'alarm1'
+        };
+
+        // 根據類型呼叫更新函數 (T065)
+        if (itemType === 'alarm') {
+            TimerApp.Alarm && TimerApp.Alarm.update(itemId, updates);
+        } else if (itemType === 'timer') {
+            TimerApp.Timer && TimerApp.Timer.update(itemId, updates);
+        }
+
+        // 關閉模態視窗
+        DOM.editModal.style.display = 'none';
+        showToast(`已更新『${label}』`);
+    }
+
+    /**
+     * T067 [US4] 處理確認刪除
+     */
+    function handleConfirmDelete() {
+        if (!DOM.confirmModal) return;
+
+        const itemId = DOM.confirmModal.dataset.itemId;
+        const itemType = DOM.confirmModal.dataset.itemType;
+
+        if (!itemId) return;
+
+        // 根據類型呼叫刪除函數 (T068)
+        if (itemType === 'alarm') {
+            TimerApp.Alarm && TimerApp.Alarm.delete(itemId);
+        } else if (itemType === 'timer') {
+            TimerApp.Timer && TimerApp.Timer.delete(itemId);
+        }
+
+        // 關閉確認模態視窗
+        DOM.confirmModal.style.display = 'none';
+    }
+
+    /**
+     * 設定自訂事件監聽
+     */
+    function setupCustomEventListeners() {
+        // 計時器事件
+        document.addEventListener('timerCreated', (e) => {
+            console.log('計時器已建立:', e.detail);
+            render();
+            showToast(`已建立計時器: ${e.detail.label}`, 'success');
+        });
+
+        document.addEventListener('timerUpdated', () => {
+            render();
+        });
+
+        document.addEventListener('timerCompleted', (e) => {
+            console.log('計時器已完成:', e.detail);
+            render();
+            showToast(`${e.detail.label} 已完成！`, 'success');
+            playSound(e.detail.soundId);
+        });
+
+        document.addEventListener('timerDeleted', () => {
+            render();
+        });
+
+        // 鬧鐘事件
+        document.addEventListener('alarmCreated', (e) => {
+            console.log('鬧鐘已建立:', e.detail);
+            render();
+            showToast(`已建立鬧鐘: ${e.detail.label}`, 'success');
+        });
+
+        document.addEventListener('alarmTriggered', (e) => {
+            console.log('鬧鐘已觸發:', e.detail);
+            render();
+            showToast(`鬧鐘已觸發: ${e.detail.label}！`, 'success');
+            playSound(e.detail.soundId);
+        });
+
+        document.addEventListener('alarmDeleted', () => {
+            render();
+        });
+    }
+
+    /**
+     * 初始化模塊
+     */
+    async function initializeModules() {
+        // 待實作：Storage、Timer、Alarm、Audio 等模塊初始化
+        console.log('模塊初始化中...');
+
+        try {
+            // 1. 初始化儲存 (T008)
+            TimerApp.Storage.init();
+            console.log('✓ Storage 模塊已初始化');
+
+            // 2. 初始化音頻 (T016)
+            TimerApp.Audio.init();
+            console.log('✓ Audio 模塊已初始化');
+
+            // 3. 初始化計時器 (T010)
+            TimerApp.Timer.init();
+            console.log('✓ Timer 模塊已初始化');
+
+            // 4. 初始化鬧鐘 (T013)
+            TimerApp.Alarm.init();
+            console.log('✓ Alarm 模塊已初始化');
+
+            // 5. 建立事件監聽 (T018)
+            setupCustomEventListeners();
+
+            console.log('✓ 所有模塊已初始化');
+        } catch (error) {
+            console.error('模塊初始化失敗:', error);
+            showError('模塊初始化失敗：' + error.message);
+        }
+    }
+
+    /**
+     * 設定自訂事件監聽 (T018)
+     */
+    function setupCustomEventListeners() {
+        // 計時器事件
+        document.addEventListener('timerCreated', (e) => {
+            console.log('事件監聽: timerCreated', e.detail);
+            render();
+        });
+
+        document.addEventListener('timerUpdated', (e) => {
+            console.log('事件監聽: timerUpdated', e.detail);
+            render();
+        });
+
+        document.addEventListener('timerPaused', (e) => {
+            console.log('事件監聽: timerPaused', e.detail);
+            render();
+        });
+
+        document.addEventListener('timerCompleted', (e) => {
+            console.log('事件監聽: timerCompleted', e.detail);
+            const timer = e.detail.timer;
+            showToast(`⏱️ ${timer.label} 完成！`, 'success');
+            // 播放聲音
+            if (TimerApp.Audio) {
+                TimerApp.Audio.play(timer.soundId);
+            }
+            render();
+        });
+
+        document.addEventListener('timerDeleted', (e) => {
+            console.log('事件監聽: timerDeleted', e.detail);
+            render();
+        });
+
+        // 鬧鐘事件
+        document.addEventListener('alarmCreated', (e) => {
+            console.log('事件監聽: alarmCreated', e.detail);
+            render();
+        });
+
+        document.addEventListener('alarmTriggered', (e) => {
+            console.log('事件監聽: alarmTriggered', e.detail);
+            const alarm = e.detail.alarm;
+            showToast(`🔔 ${alarm.label} - 鬧鐘觸發！`, 'success');
+            // 播放聲音
+            if (TimerApp.Audio) {
+                TimerApp.Audio.play(alarm.soundId);
+            }
+            render();
+        });
+
+        document.addEventListener('alarmDeleted', (e) => {
+            console.log('事件監聽: alarmDeleted', e.detail);
+            render();
+        });
+    }
+
+    /**
+     * 設定監控
+     */
+    function setupMonitoring() {
+        // 更新線上狀態
+        updateOnlineStatus();
+
+        // 每秒更新計時器顯示
+        setInterval(() => {
+            // 待實作：更新計時器顯示
+        }, 1000);
+
+        // 定期保存狀態
+        setInterval(saveState, 5000);
+    }
+
+    /**
+     * 處理聊天傳送
+     */
+    async function handleChatSend() {
+        const text = DOM.chatInput?.value.trim();
+        if (!text) {
+            showError('請輸入時間或設定');
+            return;
+        }
+
+        try {
+            clearError();
+            console.log('輸入:', text);
+            // 待實作：解析和建立計時器/鬧鐘
+
+            // 清空輸入
+            if (DOM.chatInput) {
+                DOM.chatInput.value = '';
+            }
+        } catch (error) {
+            showError(error.message);
+        }
+    }
+
+    /**
+     * 處理語音輸入
+     */
+    async function handleVoiceInput() {
+        if (!navigator.mediaDevices?.getUserUserMedia) {
+            showError('您的瀏覽器不支援語音輸入');
+            return;
+        }
+
+        try {
+            console.log('語音輸入已啟用');
+            // 待實作：Web Speech API 整合
+            showToast('語音輸入已啟用', 'info');
+        } catch (error) {
+            showError(error.message);
+        }
+    }
+
+    /**
+     * 渲染 UI
+     */
+    function render() {
+        if (!DOM.app) return;
+
+        // 第 3 階段：渲染清單
+        renderList();
+        updateListInfo();
+    }
+
+    /**
+     * 更新清單資訊
+     */
+    function updateListInfo() {
+        if (DOM.listInfo) {
+            DOM.listInfo.textContent = `計時器: ${state.items.length} 個`;
+        }
+    }
+
+    /**
+     * 播放聲音
+     */
+    function playSound(soundId) {
+        // 待實作：音頻播放
+        console.log('播放聲音:', soundId);
+    }
+
+    /**
+     * 顯示模態視窗
+     */
+    function showModal(modal) {
+        if (modal) {
+            modal.style.display = 'flex';
+        }
+    }
+
+    /**
+     * 顯示吐司通知
+     */
+    function showToast(message, type = 'info') {
+        if (!DOM.toastContainer) return;
+
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.textContent = message;
+
+        DOM.toastContainer.appendChild(toast);
+
+        // 3 秒後移除
+        setTimeout(() => {
+            toast.remove();
+        }, 3000);
+    }
+
+    /**
+     * 顯示錯誤訊息
+     */
+    function showError(message) {
+        if (DOM.inputError) {
+            DOM.inputError.textContent = message;
+            DOM.inputError.style.display = 'block';
+        }
+        showToast(message, 'error');
+    }
+
+    /**
+     * 清除錯誤訊息
+     */
+    function clearError() {
+        if (DOM.inputError) {
+            DOM.inputError.textContent = '';
+            DOM.inputError.style.display = 'none';
+        }
+    }
+
+    /**
+     * 更新線上狀態
+     */
+    function updateOnlineStatus() {
+        const isOnline = navigator.onLine;
+        if (DOM.statusIndicator) {
+            const statusDot = DOM.statusIndicator.querySelector('.status-dot');
+            const statusText = DOM.statusIndicator.querySelector('.status-text');
+
+            if (isOnline) {
+                if (statusDot) statusDot.style.backgroundColor = '#22c55e';
+                if (statusText) statusText.textContent = '線上';
+            } else {
+                if (statusDot) statusDot.style.backgroundColor = '#ef4444';
+                if (statusText) statusText.textContent = '離線';
+            }
+        }
+        console.log(isOnline ? '✅ 線上' : '❌ 離線');
+    }
+
+    /**
+     * 保存狀態
+     */
+    function saveState() {
+        // 待實作：保存到 Storage
+    }
+
+    // ============ 第 3 階段：用戶故事 1 - 鬧鐘建立與管理 ============
+
+    /**
+     * T028 [P] [US1] 計時器/鬧鐘項目渲染器
+     * 為單一計時器或鬧鐘建立 HTML
+     */
+    function renderTimerItem(item) {
+        if (!item || !item.id) return '';
+
+        const isAlarm = item.type === 'alarm';
+        const isTimer = item.type === 'timer';
+        const isCompleted = item.state === 'completed' || item.state === 'triggered';
+        const isRunning = item.state === 'running';
+        const isPaused = item.state === 'paused';
+
+        // 格式化時間顯示
+        let timeDisplay = '';
+        if (isAlarm) {
+            const triggerDate = new Date(item.triggerTime);
+            const now = new Date();
+            const isToday = triggerDate.toDateString() === now.toDateString();
+            const isTomorrow = triggerDate.toDateString() === new Date(now.getTime() + 86400000).toDateString();
+            
+            if (isToday) {
+                timeDisplay = `今天 ${String(triggerDate.getHours()).padStart(2, '0')}:${String(triggerDate.getMinutes()).padStart(2, '0')}`;
+            } else if (isTomorrow) {
+                timeDisplay = `明天 ${String(triggerDate.getHours()).padStart(2, '0')}:${String(triggerDate.getMinutes()).padStart(2, '0')}`;
+            } else {
+                timeDisplay = triggerDate.toLocaleString('zh-TW', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+            }
+        } else if (isTimer) {
+            const remaining = item.remainingSeconds || item.totalSeconds;
+            const minutes = Math.floor(remaining / 60);
+            const seconds = remaining % 60;
+            timeDisplay = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        }
+
+        // 建立項目 HTML
+        const itemHtml = `
+            <div class="timer-item ${isCompleted ? 'completed' : ''} ${isRunning ? 'running' : ''} ${isPaused ? 'paused' : ''}" data-id="${item.id}" role="listitem">
+                <div class="item-header">
+                    <span class="item-type ${isAlarm ? 'alarm-badge' : 'timer-badge'}">
+                        ${isAlarm ? '⏰ 鬧鐘' : '⏱️ 倒數'}
+                    </span>
+                    <span class="item-label">${escapeHtml(item.label || '未命名')}</span>
+                </div>
+                <div class="item-time">
+                    ${timeDisplay}
+                </div>
+                <div class="item-state">
+                    ${isCompleted ? '<span class="state-badge completed">已' + (isAlarm ? '觸發' : '完成') + '</span>' : ''}
+                    ${isRunning ? '<span class="state-badge running">運行中</span>' : ''}
+                    ${isPaused ? '<span class="state-badge paused">已暫停</span>' : ''}
+                </div>
+                <div class="item-actions">
+                    ${!isCompleted && isTimer ? `
+                        <button class="btn btn-sm pause-resume-btn" data-id="${item.id}" aria-label="${isPaused ? '恢復' : '暫停'}">
+                            ${isPaused ? '▶ 恢復' : '⏸ 暫停'}
+                        </button>
+                    ` : ''}
+                    ${!isCompleted ? `
+                        <button class="btn btn-sm btn-secondary edit-btn" data-id="${item.id}" aria-label="編輯">
+                            ✏️ 編輯
+                        </button>
+                    ` : ''}
+                    <button class="btn btn-sm btn-secondary delete-btn" data-id="${item.id}" aria-label="刪除">
+                        🗑️ 刪除
+                    </button>
+                </div>
+            </div>
+        `;
+
+        return itemHtml;
+    }
+
+    /**
+     * T029 [US1] 清單渲染器
+     * 從儲存中獲取排序的項目，渲染整個清單
+     */
+    function renderList() {
+        if (!DOM.timerList) return;
+
+        // 獲取所有項目（這裡假設從全域狀態或 Alarm/Timer 模塊）
+        // 臨時使用 state.items，之後改為從 TimerApp.Alarm 和 TimerApp.Timer 獲取
+        const items = state.items || [];
+        
+        // 按 createdAt 降序排序（最新優先）
+        const sortedItems = [...items].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+        // 清空清單
+        DOM.timerList.innerHTML = '';
+
+        if (sortedItems.length === 0) {
+            DOM.timerList.innerHTML = '<div class="empty-state">尚無計時器，開始建立一個吧</div>';
+            if (DOM.listInfo) DOM.listInfo.textContent = '計時器: 0 個';
+            return;
+        }
+
+        // 為每個項目建立 HTML
+        const itemsHtml = sortedItems.map(item => renderTimerItem(item)).join('');
+        DOM.timerList.innerHTML = itemsHtml;
+
+        // 更新計數
+        if (DOM.listInfo) {
+            DOM.listInfo.textContent = `計時器: ${sortedItems.length} 個`;
+        }
+
+        // 綁定編輯按鈕事件（事件委派）
+        attachEditHandlers();
+
+        // 綁定刪除按鈕事件（事件委派）
+        attachDeleteHandlers();
+
+        // 綁定暫停/恢復按鈕
+        attachPauseResumeHandlers();
+    }
+
+    /**
+     * T030 [US1] 將清單更新連接到事件
+     * 監聽 alarm/timer 事件並更新清單
+     */
+    function attachListenerHandlers() {
+        // 監聽 alarmCreated 事件
+        document.addEventListener('alarmCreated', (e) => {
+            console.log('alarmCreated 事件接收:', e.detail);
+            state.items = state.items || [];
+            state.items.push(e.detail);
+            renderList();
+        });
+
+        // 監聽 alarmTriggered 事件
+        document.addEventListener('alarmTriggered', (e) => {
+            console.log('alarmTriggered 事件接收:', e.detail);
+            const alarm = e.detail;
+            state.items = state.items || [];
+            const idx = state.items.findIndex(item => item.id === alarm.id);
+            if (idx >= 0) {
+                state.items[idx].state = 'triggered';
+            }
+            renderList();
+            showAlarmNotification(alarm);
+        });
+
+        // 監聽 alarmDeleted 事件
+        document.addEventListener('alarmDeleted', (e) => {
+            console.log('alarmDeleted 事件接收:', e.detail);
+            state.items = state.items || [];
+            state.items = state.items.filter(item => item.id !== e.detail.id);
+            renderList();
+        });
+
+        // 監聽 timerCreated 事件
+        document.addEventListener('timerCreated', (e) => {
+            console.log('timerCreated 事件接收:', e.detail);
+            state.items = state.items || [];
+            state.items.push(e.detail);
+            renderList();
+        });
+
+        // 監聽 timerCompleted 事件
+        document.addEventListener('timerCompleted', (e) => {
+            console.log('timerCompleted 事件接收:', e.detail);
+            const timer = e.detail;
+            state.items = state.items || [];
+            const idx = state.items.findIndex(item => item.id === timer.id);
+            if (idx >= 0) {
+                state.items[idx].state = 'completed';
+                state.items[idx].remainingSeconds = 0;
+            }
+            renderList();
+            showTimerNotification(timer);
+        });
+
+        // 監聽 timerUpdated 事件
+        document.addEventListener('timerUpdated', (e) => {
+            console.log('timerUpdated 事件接收:', e.detail);
+            state.items = state.items || [];
+            const timer = e.detail.timer;
+            const idx = state.items.findIndex(item => item.id === timer.id);
+            if (idx >= 0) {
+                state.items[idx] = timer;
+            }
+            renderList();
+        });
+
+        // 監聽 alarmUpdated 事件
+        document.addEventListener('alarmUpdated', (e) => {
+            console.log('alarmUpdated 事件接收:', e.detail);
+            state.items = state.items || [];
+            const alarm = e.detail.alarm;
+            const idx = state.items.findIndex(item => item.id === alarm.id);
+            if (idx >= 0) {
+                state.items[idx] = alarm;
+            }
+            renderList();
+        });
+
+        // 監聽 timerDeleted 事件
+        document.addEventListener('timerDeleted', (e) => {
+            console.log('timerDeleted 事件接收:', e.detail);
+            state.items = state.items || [];
+            state.items = state.items.filter(item => item.id !== e.detail.id);
+            renderList();
+        });
+    }
+
+    /**
+     * T063-T065 [US4] 編輯功能
+     * 處理編輯按鈕點擊（委派）
+     */
+    function attachEditHandlers() {
+        DOM.timerList.addEventListener('click', (e) => {
+            const editBtn = e.target.closest('.edit-btn');
+            if (!editBtn) return;
+
+            const id = editBtn.dataset.id;
+            const item = (state.items || []).find(i => i.id === id);
+            if (!item) return;
+
+            // 填入編輯表單
+            showEditModal(item);
+        });
+    }
+
+    /**
+     * 顯示編輯模態視窗
+     */
+    function showEditModal(item) {
+        if (!DOM.editModal) return;
+
+        // 保存要編輯的項目 ID（用於保存時使用）
+        DOM.editModal.dataset.itemId = item.id;
+        DOM.editModal.dataset.itemType = item.type;
+
+        // 填入表單值
+        const labelInput = DOM.editModal.querySelector('#edit-label');
+        const soundSelect = DOM.editModal.querySelector('#edit-sound');
+
+        if (labelInput) {
+            labelInput.value = item.label || '';
+            updateLabelCount();
+        }
+
+        if (soundSelect) {
+            soundSelect.value = item.soundId || 'alarm1';
+        }
+
+        // 顯示模態視窗
+        showModal(DOM.editModal);
+    }
+
+    /**
+     * 更新標籤字符計數
+     */
+    function updateLabelCount() {
+        const labelInput = document.getElementById('edit-label');
+        const labelCount = document.getElementById('edit-label-count');
+        if (labelInput && labelCount) {
+            labelCount.textContent = `${labelInput.value.length}/50`;
+        }
+    }
+
+    /**
+     * T031 [US1]/T067 [US4] 刪除功能
+     * 處理刪除按鈕點擊（委派），使用確認模態視窗
+     */
+    function attachDeleteHandlers() {
+        DOM.timerList.addEventListener('click', (e) => {
+            const deleteBtn = e.target.closest('.delete-btn');
+            if (!deleteBtn) return;
+
+            const id = deleteBtn.dataset.id;
+            const item = (state.items || []).find(i => i.id === id);
+            if (!item) return;
+
+            // 使用模態對話框而不是 browser confirm
+            showConfirmModal(item);
+        });
+    }
+
+    /**
+     * T067 [US4] 顯示確認刪除模態視窗
+     */
+    function showConfirmModal(item) {
+        if (!DOM.confirmModal) return;
+
+        // 保存要刪除的項目（用於確認時使用）
+        DOM.confirmModal.dataset.itemId = item.id;
+        DOM.confirmModal.dataset.itemType = item.type;
+
+        // 更新確認訊息
+        const confirmLabel = DOM.confirmModal.querySelector('#confirm-label');
+        if (confirmLabel) {
+            confirmLabel.textContent = escapeHtml(item.label || '未命名');
+        }
+
+        // 顯示模態視窗
+        showModal(DOM.confirmModal);
+    }
+
+    /**
+     * 暫停/恢復按鈕處理
+     */
+    function attachPauseResumeHandlers() {
+        DOM.timerList.addEventListener('click', (e) => {
+            const btn = e.target.closest('.pause-resume-btn');
+            if (!btn) return;
+
+            const id = btn.dataset.id;
+            const item = (state.items || []).find(i => i.id === id);
+            if (!item || item.type !== 'timer') return;
+
+            if (item.state === 'running') {
+                TimerApp.Timer && TimerApp.Timer.pause(id);
+            } else if (item.state === 'paused') {
+                TimerApp.Timer && TimerApp.Timer.resume(id);
+            }
+        });
+    }
+
+    /**
+     * T032 [US1] 鬧鐘觸發通知
+     */
+    function showAlarmNotification(alarm) {
+        const notification = document.createElement('div');
+        notification.className = 'notification alarm-notification';
+        notification.setAttribute('role', 'alert');
+        notification.innerHTML = `
+            <div class="notification-content">
+                <h3>🔔 鬧鐘觸發</h3>
+                <p>${escapeHtml(alarm.label || '鬧鐘')}</p>
+                <button class="btn btn-primary notification-close">完成</button>
+            </div>
+        `;
+
+        document.body.appendChild(notification);
+
+        // 播放聲音
+        if (TimerApp.Audio && typeof TimerApp.Audio.play === 'function') {
+            try {
+                TimerApp.Audio.play(alarm.soundId || 'alarm1');
+            } catch (e) {
+                console.error('播放聲音失敗:', e);
+            }
+        }
+
+        // 關閉按鈕
+        const closeBtn = notification.querySelector('.notification-close');
+        closeBtn.addEventListener('click', () => {
+            notification.remove();
+        });
+
+        // 5 秒後自動關閉
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.remove();
+            }
+        }, 5000);
+    }
+
+    /**
+     * T042 的補充：計時器完成通知
+     */
+    function showTimerNotification(timer) {
+        const notification = document.createElement('div');
+        notification.className = 'notification timer-notification';
+        notification.setAttribute('role', 'alert');
+        notification.innerHTML = `
+            <div class="notification-content">
+                <h3>⏱️ 計時器完成</h3>
+                <p>${escapeHtml(timer.label || '計時器')} 完成！</p>
+                <button class="btn btn-primary notification-close">確認</button>
+            </div>
+        `;
+
+        document.body.appendChild(notification);
+
+        // 播放聲音
+        if (TimerApp.Audio && typeof TimerApp.Audio.play === 'function') {
+            try {
+                TimerApp.Audio.play(timer.soundId || 'alarm1');
+            } catch (e) {
+                console.error('播放聲音失敗:', e);
+            }
+        }
+
+        // 關閉按鈕
+        const closeBtn = notification.querySelector('.notification-close');
+        closeBtn.addEventListener('click', () => {
+            notification.remove();
+        });
+
+        // 5 秒後自動關閉
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.remove();
+            }
+        }, 5000);
+    }
+
+    /**
+     * HTML 轉義（防止 XSS）
+     */
+    function escapeHtml(text) {
+        const map = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        };
+        return text.replace(/[&<>"']/g, m => map[m]);
+    }
+
+    /**
+     * T027 [US1] 聊天輸入處理器
+     * 監聽聊天按鈕並建立鬧鐘/計時器
+     */
+    function setupChatInputHandler() {
+        if (!DOM.chatSend || !DOM.chatInput) return;
+
+        DOM.chatSend.addEventListener('click', handleChatSubmit);
+        DOM.chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                handleChatSubmit();
+            }
+        });
+    }
+
+    /**
+     * 處理聊天提交
+     */
+    function handleChatSubmit() {
+        const text = DOM.chatInput.value.trim();
+        if (!text) return;
+
+        try {
+            // 使用 ChatParser 解析輸入
+            if (typeof ChatParser === 'undefined') {
+                showError('聊天解析器未載入');
+                return;
+            }
+
+            const parsed = ChatParser.parseTimeInput(text);
+            if (!parsed) {
+                showError('無法識別輸入格式。請嘗試：「明天 9 點」或「5 分鐘」');
+                return;
+            }
+
+            clearError();
+
+            if (parsed.type === 'alarm') {
+                // 建立鬧鐘
+                createAlarm(parsed.data);
+            } else if (parsed.type === 'timer') {
+                // 建立計時器
+                createTimer(parsed.data);
+            }
+
+            // 清空輸入
+            DOM.chatInput.value = '';
+            DOM.chatInput.focus();
+        } catch (error) {
+            console.error('聊天輸入錯誤:', error);
+            showError(error.message || '建立失敗，請重試');
+        }
+    }
+
+    /**
+     * 建立鬧鐘
+     */
+    function createAlarm(alarmData) {
+        if (!TimerApp.Alarm) {
+            showError('鬧鐘模塊未初始化');
+            return;
+        }
+
+        try {
+            const timestamp = ChatParser.convertAlarmToTimestamp(alarmData);
+            const alarm = TimerApp.Alarm.create(
+                alarmData.label || '鬧鐘',
+                timestamp,
+                state.settings.defaultSound || 'alarm1'
+            );
+
+            showToast(`✅ 已建立鬧鐘：${alarmData.label || '鬧鐘'}`);
+            console.log('鬧鐘已建立:', alarm);
+        } catch (error) {
+            showError(`建立鬧鐘失敗: ${error.message}`);
+        }
+    }
+
+    /**
+     * 建立計時器
+     */
+    function createTimer(timerData) {
+        if (!TimerApp.Timer) {
+            showError('計時器模塊未初始化');
+            return;
+        }
+
+        // T057: 檢查計時器數量限制
+        if (!checkTimerLimit()) {
+            return;
+        }
+
+        try {
+            const timer = TimerApp.Timer.create(
+                timerData.label || '計時器',
+                timerData.seconds,
+                state.settings.defaultSound || 'alarm1'
+            );
+
+            showToast(`✅ 已建立計時器：${timerData.label || '計時器'}`);
+            console.log('計時器已建立:', timer);
+        } catch (error) {
+            showError(`建立計時器失敗: ${error.message}`);
+        }
+    }
+
+    // ============ 第 3 階段結束 ============
+
+    // ============ 第 4 階段：用戶故事 2 - 語音倒數計時 ============
+
+    /**
+     * T040 [P] [US2] 格式化時間顯示
+     * 將秒數轉換為 MM:SS 格式
+     */
+    function formatTime(seconds) {
+        if (!seconds || seconds < 0) return '00:00';
+        const minutes = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    }
+
+    /**
+     * T041 [US2] 監聽計時器更新事件並更新顯示
+     */
+    function setupTimerUpdateListener() {
+        document.addEventListener('timerUpdated', (e) => {
+            const timer = e.detail;
+            if (!timer || !timer.id) return;
+
+            const itemElement = document.querySelector(`[data-id="${timer.id}"]`);
+            if (!itemElement) return;
+
+            // 更新剩餘時間顯示
+            const timeElement = itemElement.querySelector('.item-time');
+            if (timeElement) {
+                timeElement.textContent = formatTime(timer.remainingSeconds || timer.totalSeconds);
+            }
+
+            // 視覺反饋：時間接近時改變顏色（可選）
+            if (timer.remainingSeconds && timer.remainingSeconds < 10) {
+                itemElement.classList.add('timer-critical');
+            } else {
+                itemElement.classList.remove('timer-critical');
+            }
+        });
+    }
+
+    /**
+     * T042 [P] [US2] 計時器完成處理器
+     */
+    function setupTimerCompletionListener() {
+        document.addEventListener('timerCompleted', (e) => {
+            const timer = e.detail;
+            console.log('計時器已完成:', timer);
+
+            showTimerNotification(timer);
+
+            // 更新列表
+            if (state.items) {
+                const idx = state.items.findIndex(item => item.id === timer.id);
+                if (idx >= 0) {
+                    state.items[idx].state = 'completed';
+                    state.items[idx].remainingSeconds = 0;
+                }
+                renderList();
+            }
+        });
+    }
+
+    /**
+     * T046 [US2] 語音按鈕功能
+     */
+    function setupVoiceButtonHandler() {
+        if (!DOM.voiceBtn) return;
+
+        DOM.voiceBtn.addEventListener('click', () => {
+            // 檢查語音支援
+            if (!SpeechRecognition || !SpeechRecognition.isSupported()) {
+                SpeechRecognition.showUnsupportedMessage();
+                return;
+            }
+
+            if (SpeechRecognition.isActive()) {
+                // 已在監聽中，停止
+                SpeechRecognition.stopVoiceInput();
+                DOM.voiceBtn.textContent = '🎤';
+                DOM.voiceBtn.classList.remove('listening');
+                return;
+            }
+
+            // 開始監聽
+            DOM.voiceBtn.textContent = '🎤 聽中...';
+            DOM.voiceBtn.classList.add('listening');
+
+            SpeechRecognition.startVoiceInput(
+                (transcript) => {
+                    console.log('語音識別結果:', transcript);
+                    DOM.voiceBtn.textContent = '🎤';
+                    DOM.voiceBtn.classList.remove('listening');
+
+                    // 將識別結果填入輸入框並提交
+                    if (DOM.chatInput) {
+                        DOM.chatInput.value = transcript;
+                        handleChatSubmit();
+                    }
+                },
+                (error) => {
+                    console.error('語音識別錯誤:', error);
+                    DOM.voiceBtn.textContent = '🎤';
+                    DOM.voiceBtn.classList.remove('listening');
+                    showError(error.message || '語音輸入出錯');
+                }
+            );
+        });
+    }
+
+    // ============ 第 4 階段結束 ============
+
+    // ============ 第 5 階段：用戶故事 3 - 管理多個計時器 ============
+
+    /**
+     * T057 [US3] 檢查計時器數量限制
+     */
+    function checkTimerLimit() {
+        const maxTimers = 20;
+        const currentCount = (state.items || []).length;
+        
+        if (currentCount >= maxTimers) {
+            showError(`已達到最大計時器數量（${maxTimers} 個），請刪除舊的計時器`);
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * T058 [US3] 更新清單元數據顯示
+     */
+    function updateListMetadata() {
+        if (!DOM.listInfo) return;
+        
+        const items = state.items || [];
+        const activeCount = items.filter(i => i.state === 'running' || i.state === 'paused').length;
+        
+        let text = `計時器: ${items.length} 個`;
+        if (activeCount >= 5) {
+            text += ' (所有計時器獨立運行)';
+        }
+        
+        DOM.listInfo.textContent = text;
+    }
+
+    /**
+     * T059 [US3] 效能監控
+     */
+    const performanceMetrics = {
+        lastRenderTime: 0,
+        renderCount: 0
+    };
+
+    function measureRenderPerformance(fn) {
+        const start = performance.now();
+        fn();
+        const duration = performance.now() - start;
+        
+        performanceMetrics.lastRenderTime = duration;
+        performanceMetrics.renderCount++;
+        
+        if (duration > 100) {
+            console.warn(`⚠️ 清單渲染耗時 ${duration.toFixed(2)}ms (建議 < 50ms)`);
+        }
+        
+        if (duration > 50) {
+            console.log(`📊 渲染性能: ${duration.toFixed(2)}ms`);
+        }
+    }
+
+    /**
+     * 優化的清單渲染（T055）
+     * 只更新單個計時器項目，而不是整個清單
+     */
+    function updateTimerItemOnly(timerId) {
+        const itemElement = document.querySelector(`[data-id="${timerId}"]`);
+        if (!itemElement) return;
+        
+        const item = (state.items || []).find(i => i.id === timerId);
+        if (!item) return;
+        
+        // 只更新時間顯示
+        const timeElement = itemElement.querySelector('.item-time');
+        if (timeElement && item.type === 'timer') {
+            timeElement.textContent = formatTime(item.remainingSeconds || item.totalSeconds);
+        }
+        
+        // 更新狀態徽章
+        const stateElement = itemElement.querySelector('.item-state');
+        if (stateElement) {
+            const badges = [];
+            if (item.state === 'running') badges.push('<span class="state-badge running">運行中</span>');
+            if (item.state === 'paused') badges.push('<span class="state-badge paused">已暫停</span>');
+            if (item.state === 'completed' || item.state === 'triggered') {
+                badges.push(`<span class="state-badge completed">已${item.type === 'alarm' ? '觸發' : '完成'}</span>`);
+            }
+            stateElement.innerHTML = badges.join('');
+        }
+    }
+
+    /**
+     * 修改原有的 renderList 以支持性能優化
+     */
+    const originalRenderList = renderList;
+    renderList = function() {
+        measureRenderPerformance(() => {
+            originalRenderList.call(this);
+            updateListMetadata();
+        });
+    };
+
+    // ============ 第 5 階段結束 ============
+
+    /**
+     * 公開 API
+     */
+    return {
+        init,
+        getState: () => state,
+        setState: (updates) => {
+            state = { ...state, ...updates };
+        },
+        render,
+        showToast,
+        showError,
+        clearError,
+        renderList,
+        attachListenerHandlers,
+        // 事件分派器 (T018)
+        emitEvent: (eventName, detail) => {
+            try {
+                const event = new CustomEvent(eventName, { detail });
+                document.dispatchEvent(event);
+                console.log(`事件發送: ${eventName}`, detail);
+            } catch (error) {
+                console.error(`事件發送失敗 (${eventName}):`, error);
+            }
+        }
+    };
+})();
+
+// 當 DOM 準備就緒時初始化應用程式
+document.addEventListener('DOMContentLoaded', () => {
+    TimerApp.init();
+});
+
+// 對於已緩存的頁面，直接初始化
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        TimerApp.init();
+    });
+} else {
+    TimerApp.init();
+}
