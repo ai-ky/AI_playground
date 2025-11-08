@@ -163,12 +163,189 @@ const TimerApp = (() => {
             });
         });
 
+        // 編輯模態事件處理 (T064, T065)
+        const editSaveBtn = document.getElementById('edit-save');
+        const editCancelBtn = document.getElementById('edit-cancel');
+        const editLabelInput = document.getElementById('edit-label');
+
+        if (editSaveBtn) {
+            editSaveBtn.addEventListener('click', handleEditSave);
+        }
+
+        if (editCancelBtn) {
+            editCancelBtn.addEventListener('click', () => {
+                DOM.editModal.style.display = 'none';
+            });
+        }
+
+        if (editLabelInput) {
+            editLabelInput.addEventListener('input', updateLabelCount);
+        }
+
+        // 確認刪除模態事件處理 (T067)
+        const confirmYesBtn = document.getElementById('confirm-yes');
+        const confirmNoBtn = document.getElementById('confirm-no');
+
+        if (confirmYesBtn) {
+            confirmYesBtn.addEventListener('click', handleConfirmDelete);
+        }
+
+        if (confirmNoBtn) {
+            confirmNoBtn.addEventListener('click', () => {
+                DOM.confirmModal.style.display = 'none';
+            });
+        }
+
+        // 設定事件處理 (T073)
+        const themeSelect = document.getElementById('theme-select');
+        const soundSelect = document.getElementById('sound-select');
+        const languageSelect = document.getElementById('language-select');
+        const clearAllBtn = document.getElementById('clear-all-btn');
+
+        if (themeSelect) {
+            themeSelect.value = state.settings.theme || 'light';
+            themeSelect.addEventListener('change', (e) => {
+                state.settings.theme = e.target.value;
+                applyTheme();
+                if (window.TimerApp?.Storage?.save) {
+                    window.TimerApp.Storage.save('settings', state.settings);
+                }
+                showToast(`已切換至${e.target.value === 'dark' ? '深色' : '淺色'}主題`);
+            });
+        }
+
+        if (soundSelect) {
+            soundSelect.value = state.settings.defaultSound || 'alarm1';
+            soundSelect.addEventListener('change', (e) => {
+                state.settings.defaultSound = e.target.value;
+                if (window.TimerApp?.Storage?.save) {
+                    window.TimerApp.Storage.save('settings', state.settings);
+                }
+                showToast('已更新預設提示音');
+            });
+        }
+
+        if (languageSelect) {
+            languageSelect.value = state.settings.language || 'zh_TW';
+            languageSelect.addEventListener('change', (e) => {
+                state.settings.language = e.target.value;
+                if (window.TimerApp?.Storage?.save) {
+                    window.TimerApp.Storage.save('settings', state.settings);
+                }
+                showToast('已更新語言設定（後續會套用）');
+            });
+        }
+
+        if (clearAllBtn) {
+            clearAllBtn.addEventListener('click', () => {
+                if (confirm('確認要清除所有資料嗎？此操作無法復原。')) {
+                    if (window.TimerApp?.Storage?.clear) {
+                        window.TimerApp.Storage.clear();
+                    }
+                    state.items = [];
+                    renderList();
+                    DOM.settingsModal.style.display = 'none';
+                    showToast('已清除所有資料');
+                }
+            });
+        }
+
         // 線上/離線事件
         window.addEventListener('online', updateOnlineStatus);
         window.addEventListener('offline', updateOnlineStatus);
 
+        // PWA 安裝提示 (T077)
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            // 可選：顯示安裝按鈕
+            const installBtn = document.getElementById('install-btn');
+            if (installBtn) {
+                installBtn.style.display = 'block';
+                installBtn.addEventListener('click', async () => {
+                    if (deferredPrompt) {
+                        deferredPrompt.prompt();
+                        const { outcome } = await deferredPrompt.userChoice;
+                        console.log(`用戶回應安裝提示: ${outcome}`);
+                        deferredPrompt = null;
+                        installBtn.style.display = 'none';
+                    }
+                });
+            }
+        });
+
+        window.addEventListener('appinstalled', () => {
+            console.log('PWA 已安裝');
+            showToast('應用程式已安裝，可離線使用！');
+            deferredPrompt = null;
+        });
+
         // 自訂事件監聽
         setupCustomEventListeners();
+    }
+
+    /**
+     * T064 [US4] 處理編輯保存
+     */
+    function handleEditSave() {
+        if (!DOM.editModal) return;
+
+        const itemId = DOM.editModal.dataset.itemId;
+        const itemType = DOM.editModal.dataset.itemType;
+        const labelInput = document.getElementById('edit-label');
+        const soundSelect = document.getElementById('edit-sound');
+
+        if (!itemId || !labelInput) return;
+
+        const label = labelInput.value.trim();
+        if (!label) {
+            showError('標籤不能為空');
+            return;
+        }
+
+        if (label.length > 50) {
+            showError('標籤不能超過 50 個字符');
+            return;
+        }
+
+        const updates = {
+            label,
+            soundId: soundSelect ? soundSelect.value : 'alarm1'
+        };
+
+        // 根據類型呼叫更新函數 (T065)
+        if (itemType === 'alarm') {
+            TimerApp.Alarm && TimerApp.Alarm.update(itemId, updates);
+        } else if (itemType === 'timer') {
+            TimerApp.Timer && TimerApp.Timer.update(itemId, updates);
+        }
+
+        // 關閉模態視窗
+        DOM.editModal.style.display = 'none';
+        showToast(`已更新『${label}』`);
+    }
+
+    /**
+     * T067 [US4] 處理確認刪除
+     */
+    function handleConfirmDelete() {
+        if (!DOM.confirmModal) return;
+
+        const itemId = DOM.confirmModal.dataset.itemId;
+        const itemType = DOM.confirmModal.dataset.itemType;
+
+        if (!itemId) return;
+
+        // 根據類型呼叫刪除函數 (T068)
+        if (itemType === 'alarm') {
+            TimerApp.Alarm && TimerApp.Alarm.delete(itemId);
+        } else if (itemType === 'timer') {
+            TimerApp.Timer && TimerApp.Timer.delete(itemId);
+        }
+
+        // 關閉確認模態視窗
+        DOM.confirmModal.style.display = 'none';
     }
 
     /**
@@ -530,6 +707,11 @@ const TimerApp = (() => {
                             ${isPaused ? '▶ 恢復' : '⏸ 暫停'}
                         </button>
                     ` : ''}
+                    ${!isCompleted ? `
+                        <button class="btn btn-sm btn-secondary edit-btn" data-id="${item.id}" aria-label="編輯">
+                            ✏️ 編輯
+                        </button>
+                    ` : ''}
                     <button class="btn btn-sm btn-secondary delete-btn" data-id="${item.id}" aria-label="刪除">
                         🗑️ 刪除
                     </button>
@@ -571,6 +753,9 @@ const TimerApp = (() => {
         if (DOM.listInfo) {
             DOM.listInfo.textContent = `計時器: ${sortedItems.length} 個`;
         }
+
+        // 綁定編輯按鈕事件（事件委派）
+        attachEditHandlers();
 
         // 綁定刪除按鈕事件（事件委派）
         attachDeleteHandlers();
@@ -639,9 +824,22 @@ const TimerApp = (() => {
         document.addEventListener('timerUpdated', (e) => {
             console.log('timerUpdated 事件接收:', e.detail);
             state.items = state.items || [];
-            const idx = state.items.findIndex(item => item.id === e.detail.id);
+            const timer = e.detail.timer;
+            const idx = state.items.findIndex(item => item.id === timer.id);
             if (idx >= 0) {
-                Object.assign(state.items[idx], e.detail);
+                state.items[idx] = timer;
+            }
+            renderList();
+        });
+
+        // 監聽 alarmUpdated 事件
+        document.addEventListener('alarmUpdated', (e) => {
+            console.log('alarmUpdated 事件接收:', e.detail);
+            state.items = state.items || [];
+            const alarm = e.detail.alarm;
+            const idx = state.items.findIndex(item => item.id === alarm.id);
+            if (idx >= 0) {
+                state.items[idx] = alarm;
             }
             renderList();
         });
@@ -656,8 +854,64 @@ const TimerApp = (() => {
     }
 
     /**
-     * T031 [US1] 刪除功能
-     * 處理刪除按鈕點擊（委派）
+     * T063-T065 [US4] 編輯功能
+     * 處理編輯按鈕點擊（委派）
+     */
+    function attachEditHandlers() {
+        DOM.timerList.addEventListener('click', (e) => {
+            const editBtn = e.target.closest('.edit-btn');
+            if (!editBtn) return;
+
+            const id = editBtn.dataset.id;
+            const item = (state.items || []).find(i => i.id === id);
+            if (!item) return;
+
+            // 填入編輯表單
+            showEditModal(item);
+        });
+    }
+
+    /**
+     * 顯示編輯模態視窗
+     */
+    function showEditModal(item) {
+        if (!DOM.editModal) return;
+
+        // 保存要編輯的項目 ID（用於保存時使用）
+        DOM.editModal.dataset.itemId = item.id;
+        DOM.editModal.dataset.itemType = item.type;
+
+        // 填入表單值
+        const labelInput = DOM.editModal.querySelector('#edit-label');
+        const soundSelect = DOM.editModal.querySelector('#edit-sound');
+
+        if (labelInput) {
+            labelInput.value = item.label || '';
+            updateLabelCount();
+        }
+
+        if (soundSelect) {
+            soundSelect.value = item.soundId || 'alarm1';
+        }
+
+        // 顯示模態視窗
+        showModal(DOM.editModal);
+    }
+
+    /**
+     * 更新標籤字符計數
+     */
+    function updateLabelCount() {
+        const labelInput = document.getElementById('edit-label');
+        const labelCount = document.getElementById('edit-label-count');
+        if (labelInput && labelCount) {
+            labelCount.textContent = `${labelInput.value.length}/50`;
+        }
+    }
+
+    /**
+     * T031 [US1]/T067 [US4] 刪除功能
+     * 處理刪除按鈕點擊（委派），使用確認模態視窗
      */
     function attachDeleteHandlers() {
         DOM.timerList.addEventListener('click', (e) => {
@@ -668,17 +922,29 @@ const TimerApp = (() => {
             const item = (state.items || []).find(i => i.id === id);
             if (!item) return;
 
-            // 顯示確認對話框
-            const confirmed = confirm(`確認刪除『${item.label}』嗎?`);
-            if (confirmed) {
-                // 根據類型調用刪除函數
-                if (item.type === 'alarm') {
-                    TimerApp.Alarm && TimerApp.Alarm.delete(id);
-                } else if (item.type === 'timer') {
-                    TimerApp.Timer && TimerApp.Timer.delete(id);
-                }
-            }
+            // 使用模態對話框而不是 browser confirm
+            showConfirmModal(item);
         });
+    }
+
+    /**
+     * T067 [US4] 顯示確認刪除模態視窗
+     */
+    function showConfirmModal(item) {
+        if (!DOM.confirmModal) return;
+
+        // 保存要刪除的項目（用於確認時使用）
+        DOM.confirmModal.dataset.itemId = item.id;
+        DOM.confirmModal.dataset.itemType = item.type;
+
+        // 更新確認訊息
+        const confirmLabel = DOM.confirmModal.querySelector('#confirm-label');
+        if (confirmLabel) {
+            confirmLabel.textContent = escapeHtml(item.label || '未命名');
+        }
+
+        // 顯示模態視窗
+        showModal(DOM.confirmModal);
     }
 
     /**
